@@ -15,4 +15,9 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Calculator"
+
 include(":app")
+include(":core:model")
+include(":core:math")
+include(":core:designsystem")
+include(":data")

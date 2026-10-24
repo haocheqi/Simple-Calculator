@@ -2,19 +2,18 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp")
 }
 
 android {
-    namespace = "com.example.calculator"
+    namespace = "com.hpcalc.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.calculator"
+        applicationId = "com.hpcalc.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0-redesign"
+        versionCode = 3
+        versionName = "3.0-w1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -33,6 +32,11 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:model"))
+    implementation(project(":core:math"))
+    implementation(project(":core:designsystem"))
+    implementation(project(":data"))
+
     implementation(platform("androidx.compose:compose-bom:${libs.versions.composeBom.get()}"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -41,15 +45,14 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.bundles.room)
-    implementation(libs.androidx.datastore)
-    implementation(libs.big.math)
-    ksp(libs.androidx.room.compiler)
+
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
     testImplementation(libs.junit)
+
     androidTestImplementation(platform("androidx.compose:compose-bom:${libs.versions.composeBom.get()}"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso)
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
