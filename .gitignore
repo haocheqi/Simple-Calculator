@@ -1,0 +1,19 @@
+# Gradle 与构建缓存
+.gradle/
+.gradle-home/
+.gradle-dist/
+build/
+*/build/
+
+# 本地工具链（不入库，各自机器重新准备）
+android-sdk/
+cmdline-tools.zip
+gradle-*.zip
+local.properties
+
+# 构建产物
+*.apk
+
+# 临时文件与构建日志
+*.log
+.kotlin/
