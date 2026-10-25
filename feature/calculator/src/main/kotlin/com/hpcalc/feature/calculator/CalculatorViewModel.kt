@@ -90,14 +90,26 @@ class CalculatorViewModel(
 
             is CalculatorUiEvent.DeleteHistory -> launchIo { history.deleteById(event.id) }
 
-            is CalculatorUiEvent.SetMatrixSize -> mutate { it.copy(matrix = it.matrix.resized(event.size)) }
+            is CalculatorUiEvent.SetHistoryPinned -> launchIo {
+                history.setPinned(event.id, event.pinned)
+            }
+
+            is CalculatorUiEvent.SetMatrixRows -> mutate { it.copy(matrix = it.matrix.withRows(event.rows)) }
+
+            is CalculatorUiEvent.SetMatrixColumns -> mutate {
+                it.copy(matrix = it.matrix.withColumns(event.columns))
+            }
+
+            is CalculatorUiEvent.SetMatrixRightColumns -> mutate {
+                it.copy(matrix = it.matrix.withRightColumns(event.columns))
+            }
 
             is CalculatorUiEvent.SetMatrixCell -> mutate {
                 it.copy(matrix = it.matrix.withCell(event.side, event.row, event.column, event.value))
             }
 
             is CalculatorUiEvent.SetMatrixOperation -> mutate {
-                it.copy(matrix = it.matrix.copy(operation = event.operation))
+                it.copy(matrix = it.matrix.withOperation(event.operation))
             }
 
             CalculatorUiEvent.EvaluateMatrix -> evaluateMatrix()
@@ -197,7 +209,9 @@ class CalculatorViewModel(
         savedStateHandle[KEY_EXPRESSION] = next.expression
         savedStateHandle[KEY_MODE] = next.mode.name
         savedStateHandle[KEY_ANS] = next.ans?.toPlainString()
-        savedStateHandle[KEY_MATRIX_SIZE] = next.matrix.size
+        savedStateHandle[KEY_MATRIX_ROWS] = next.matrix.rows
+        savedStateHandle[KEY_MATRIX_COLUMNS] = next.matrix.columns
+        savedStateHandle[KEY_MATRIX_RIGHT_COLUMNS] = next.matrix.rightColumns
         savedStateHandle[KEY_MATRIX_OPERATION] = next.matrix.operation.name
         savedStateHandle[KEY_MATRIX_LEFT] = next.matrix.left.flatten().joinToString(CELL_SEPARATOR)
         savedStateHandle[KEY_MATRIX_RIGHT] = next.matrix.right.flatten().joinToString(CELL_SEPARATOR)
@@ -206,11 +220,26 @@ class CalculatorViewModel(
     }
 
     private fun restore(): CalculatorUiState {
-        val size = savedStateHandle.get<Int>(KEY_MATRIX_SIZE)
+        val operation = savedStateHandle.get<String>(KEY_MATRIX_OPERATION)
+            ?.let { runCatching { MatrixOperationKind.valueOf(it) }.getOrNull() }
+            ?: MatrixOperationKind.ADD
+        val rows = savedStateHandle.get<Int>(KEY_MATRIX_ROWS)
             ?.coerceIn(MIN_MATRIX_SIZE, MAX_MATRIX_SIZE)
             ?: 2
-        val left = savedStateHandle.get<String>(KEY_MATRIX_LEFT)?.toGrid(size) ?: blankMatrixGrid(size)
-        val right = savedStateHandle.get<String>(KEY_MATRIX_RIGHT)?.toGrid(size) ?: blankMatrixGrid(size)
+        val columns = savedStateHandle.get<Int>(KEY_MATRIX_COLUMNS)
+            ?.coerceIn(MIN_MATRIX_SIZE, MAX_MATRIX_SIZE)
+            ?: 2
+        val rightColumns = savedStateHandle.get<Int>(KEY_MATRIX_RIGHT_COLUMNS)
+            ?.coerceIn(MIN_MATRIX_SIZE, MAX_MATRIX_SIZE)
+            ?: 2
+
+        // 右矩阵形状由左矩阵与运算种类推导，重建时用同一套函数，避免两处逻辑漂移。
+        val rightRows = rightRowsFor(operation, rows, columns)
+        val rightColumnCount = rightColumnsFor(operation, columns, rightColumns)
+        val left = savedStateHandle.get<String>(KEY_MATRIX_LEFT)?.toGrid(rows, columns)
+            ?: blankMatrixGrid(rows, columns)
+        val right = savedStateHandle.get<String>(KEY_MATRIX_RIGHT)?.toGrid(rightRows, rightColumnCount)
+            ?: blankMatrixGrid(rightRows, rightColumnCount)
 
         return CalculatorUiState(
             mode = savedStateHandle.get<String>(KEY_MODE)
@@ -221,12 +250,12 @@ class CalculatorViewModel(
             substituteVariable = savedStateHandle.get<String>(KEY_SUBSTITUTE_VARIABLE) ?: "x",
             substituteValue = savedStateHandle.get<String>(KEY_SUBSTITUTE_VALUE) ?: "",
             matrix = MatrixUiState(
-                size = size,
+                rows = rows,
+                columns = columns,
+                rightColumns = rightColumns,
                 left = left,
                 right = right,
-                operation = savedStateHandle.get<String>(KEY_MATRIX_OPERATION)
-                    ?.let { runCatching { MatrixOperationKind.valueOf(it) }.getOrNull() }
-                    ?: MatrixOperationKind.ADD
+                operation = operation
             )
         )
     }
@@ -248,7 +277,9 @@ class CalculatorViewModel(
         private const val KEY_ANS = "ans"
         private const val KEY_SUBSTITUTE_VARIABLE = "substituteVariable"
         private const val KEY_SUBSTITUTE_VALUE = "substituteValue"
-        private const val KEY_MATRIX_SIZE = "matrixSize"
+        private const val KEY_MATRIX_ROWS = "matrixRows"
+        private const val KEY_MATRIX_COLUMNS = "matrixColumns"
+        private const val KEY_MATRIX_RIGHT_COLUMNS = "matrixRightColumns"
         private const val KEY_MATRIX_OPERATION = "matrixOperation"
         private const val KEY_MATRIX_LEFT = "matrixLeft"
         private const val KEY_MATRIX_RIGHT = "matrixRight"
@@ -262,42 +293,20 @@ class CalculatorViewModel(
     }
 }
 
-private fun MatrixUiState.resized(size: Int): MatrixUiState {
-    fun resize(grid: List<List<String>>): List<List<String>> =
-        List(size) { row -> List(size) { column -> grid.getOrNull(row)?.getOrNull(column) ?: "" } }
-
-    return copy(size = size, left = resize(left), right = resize(right))
-}
-
-private fun MatrixUiState.withCell(
-    side: MatrixSide,
-    row: Int,
-    column: Int,
-    value: String
-): MatrixUiState {
-    fun set(grid: List<List<String>>): List<List<String>> = grid.mapIndexed { r, cells ->
-        if (r != row) cells else cells.mapIndexed { c, cell -> if (c == column) value else cell }
-    }
-
-    return when (side) {
-        MatrixSide.LEFT -> copy(left = set(left))
-        MatrixSide.RIGHT -> copy(right = set(right))
-    }
-}
-
 /** 留空的单元格按 0 处理；无法解析的数字整张表作废（返回 null，界面保持原结果）。 */
 private fun List<List<String>>.toMatrix(): Matrix? {
+    if (isEmpty() || any { it.isEmpty() }) return null
     val rows = map { row ->
         row.map { cell ->
             cell.trim().ifEmpty { "0" }.toBigDecimalOrNull() ?: return null
         }
     }
-    return if (rows.isEmpty()) null else Matrix(rows)
+    return Matrix(rows)
 }
 
-private fun String.toGrid(size: Int): List<List<String>> {
+private fun String.toGrid(rows: Int, columns: Int): List<List<String>> {
     val cells = split(CELL_TOKEN)
-    return List(size) { row -> List(size) { column -> cells.getOrNull(row * size + column) ?: "" } }
+    return List(rows) { row -> List(columns) { column -> cells.getOrNull(row * columns + column) ?: "" } }
 }
 
 private const val CELL_TOKEN = "|"

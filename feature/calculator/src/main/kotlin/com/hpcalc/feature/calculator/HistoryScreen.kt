@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +35,7 @@ fun HistoryScreen(
     onBack: () -> Unit,
     onReuse: (String) -> Unit,
     onDelete: (Long) -> Unit,
+    onTogglePin: (HistoryEntity) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -61,7 +64,12 @@ fun HistoryScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(entries, key = { it.id }) { entry ->
-                    HistoryRow(entry = entry, onReuse = onReuse, onDelete = onDelete)
+                    HistoryRow(
+                        entry = entry,
+                        onReuse = onReuse,
+                        onDelete = onDelete,
+                        onTogglePin = onTogglePin
+                    )
                     HorizontalDivider()
                 }
             }
@@ -73,7 +81,8 @@ fun HistoryScreen(
 private fun HistoryRow(
     entry: HistoryEntity,
     onReuse: (String) -> Unit,
-    onDelete: (Long) -> Unit
+    onDelete: (Long) -> Unit,
+    onTogglePin: (HistoryEntity) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -99,6 +108,23 @@ private fun HistoryRow(
         }
         TextButton(onClick = { onReuse(entry.expression) }) {
             Text(stringResource(R.string.history_use))
+        }
+        IconButton(onClick = { onTogglePin(entry) }) {
+            Icon(
+                imageVector = if (entry.pinned) {
+                    Icons.Filled.PushPin
+                } else {
+                    Icons.Outlined.PushPin
+                },
+                contentDescription = stringResource(
+                    if (entry.pinned) R.string.history_unpin else R.string.history_pin
+                ),
+                tint = if (entry.pinned) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
         }
         IconButton(onClick = { onDelete(entry.id) }) {
             Icon(

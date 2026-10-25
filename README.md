@@ -2,17 +2,18 @@
 
 面向 Android 10（API 29）及以上的高精度多模式计算器。内部 50 位 `BigDecimal` 精度，默认显示 16 位有效数字。
 
-当前处于 **v3.0 重写阶段 2**（呈现层重写）。长期计划见 [docs/ROADMAP.md](docs/ROADMAP.md)，验收清单见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。
+当前处于 **v3.0**（三个阶段代码均已完成，手工验收待执行）。长期计划见 [docs/ROADMAP.md](docs/ROADMAP.md)，验收清单见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)，发布流程见 [docs/RELEASING.md](docs/RELEASING.md)，变更记录见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
 
 ## 功能
 
 - 普通和科学计算：50 位内部精度，默认显示 16 位有效数字。
-- 三角、反三角、双曲、对数、指数、阶乘、取模。
+- 三角、反三角、双曲、对数、指数、阶乘、取模；另有 `gcd`、`lcm`、`comb`、`perm`、`min`、`max`、`clamp`、`sum`、`mean`、`median`、`stdev`、`cbrt`、`root`、`logb`、`atan2`、`deg`、`rad`，支持多参数与嵌套。
 - 角度制：弧度 / 角度 / 百分度，设置里可改，反三角结果会还原到所选单位。
-- 多项式展开、合并同类项、化简、隐式乘法和变量代入。
-- 最多 6×6 实数矩阵：加减乘、行列式、逆、转置、秩（矩形矩阵的运算能力已具备，输入界面在阶段 3 解锁）。
+- 显示模式：小数、工程记数、**精确分数**（`1/3` 渲染成真分式；遇到必然产生无理数的运算自动退回小数，不伪造分数）。
+- 多项式展开、合并同类项、化简、隐式乘法，以及**代入求值**（变量名 + 取值，取值可以是表达式如 `π/2`）。
+- 最多 6×6 实数矩阵：加减乘、行列式、逆、转置、秩，**支持非方阵**（B 的形状按运算自动推导）。
 - 公式排版用 Compose 自绘：基线对齐、真分式、上下标、根式、矩阵定界符。**不使用 WebView**。
-- Room 历史记录、DataStore 设置、Material 3 深浅主题（含 `values-night` 冷启动底色）。
+- Room 历史记录（可置顶）、DataStore 设置、Material 3 深浅主题（含 `values-night` 冷启动底色）。
 
 ## 构建
 
@@ -23,7 +24,7 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 ./.gradle-dist/gradle-8.10.2/bin/gradle.bat test assembleDebug
 ```
 
-Debug APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`。
+Debug APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`；release 走 `assembleRelease`（R8 + 签名），签名材料与发布步骤见 [docs/RELEASING.md](docs/RELEASING.md)。
 
 Android SDK 位于 `E:\code\calculate\android-sdk`，由 `local.properties` 的 `sdk.dir` 指定；其他机器需修改该文件。
 
@@ -48,9 +49,9 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 ./.gradle-dist/gradle-8.10.2/bin/gradle.bat test
 ```
 
-89 个 JVM 单元测试，集中在 `core/math/src/test`，逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
+**165 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）与 `feature/calculator`（矩阵形状推导），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
 
-排版引擎（`:core:mathui`）目前只有编译期保证，**没有自动化视觉测试**——它需要设备或模拟器。`docs/ACCEPTANCE.md` 的 H01 必须人工验收。
+排版引擎（`:core:mathui`）目前只有编译期保证，**没有自动化视觉测试**——它需要设备或模拟器。`docs/ACCEPTANCE.md` 的 H01/H02 必须人工验收。
 
 ## 依赖许可
 

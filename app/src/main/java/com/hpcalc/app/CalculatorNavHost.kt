@@ -43,6 +43,7 @@ fun CalculatorNavHost(
                     navController.popBackStack()
                 },
                 onDelete = { onEvent(CalculatorUiEvent.DeleteHistory(it)) },
+                onTogglePin = { onEvent(CalculatorUiEvent.SetHistoryPinned(it.id, !it.pinned)) },
                 onClear = { onEvent(CalculatorUiEvent.ClearHistory) }
             )
         }

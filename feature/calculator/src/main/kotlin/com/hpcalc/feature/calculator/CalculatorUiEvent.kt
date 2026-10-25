@@ -32,7 +32,15 @@ sealed interface CalculatorUiEvent {
 
     data class DeleteHistory(val id: Long) : CalculatorUiEvent
 
-    data class SetMatrixSize(val size: Int) : CalculatorUiEvent
+    /** 置顶 / 取消置顶一条历史。 */
+    data class SetHistoryPinned(val id: Long, val pinned: Boolean) : CalculatorUiEvent
+
+    data class SetMatrixRows(val rows: Int) : CalculatorUiEvent
+
+    data class SetMatrixColumns(val columns: Int) : CalculatorUiEvent
+
+    /** 只对乘法有意义：右矩阵的列数。 */
+    data class SetMatrixRightColumns(val columns: Int) : CalculatorUiEvent
 
     data class SetMatrixCell(
         val side: MatrixSide,

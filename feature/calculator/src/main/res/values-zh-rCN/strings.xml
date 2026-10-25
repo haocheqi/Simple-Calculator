@@ -23,6 +23,8 @@
     <string name="history_clear">清空历史</string>
     <string name="history_delete">删除这条记录</string>
     <string name="history_use">重新使用</string>
+    <string name="history_pin">置顶这条记录</string>
+    <string name="history_unpin">取消置顶</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_theme">主题</string>
@@ -45,7 +47,9 @@
     <string name="settings_precision">内部 %1$d 位精度，显示 %2$d 位</string>
 
     <string name="matrix_title">矩阵</string>
-    <string name="matrix_size">阶数</string>
+    <string name="matrix_rows">行</string>
+    <string name="matrix_columns">列</string>
+    <string name="matrix_dimension">%1$d × %2$d</string>
     <string name="matrix_a">矩阵 A</string>
     <string name="matrix_b">矩阵 B</string>
     <string name="matrix_compute">计算</string>
