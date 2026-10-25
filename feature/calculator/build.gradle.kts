@@ -32,4 +32,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     testImplementation(libs.junit)
+    // 只用于测试：Dispatchers.setMain 让 viewModelScope 在 JVM 上可跑。
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

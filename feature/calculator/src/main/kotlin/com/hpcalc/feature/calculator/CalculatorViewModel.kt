@@ -10,7 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hpcalc.core.data.HistoryDao
 import com.hpcalc.core.data.HistoryEntity
 import com.hpcalc.core.data.Settings
-import com.hpcalc.core.data.SettingsRepository
+import com.hpcalc.core.data.SettingsStore
 import com.hpcalc.core.math.CalculatorEngine
 import com.hpcalc.core.model.AngleUnit
 import com.hpcalc.core.model.CalculatorMode
@@ -21,6 +21,7 @@ import com.hpcalc.core.model.Matrix
 import com.hpcalc.core.model.MatrixOperation
 import com.hpcalc.core.model.plainText
 import java.math.BigDecimal
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,12 +44,22 @@ import kotlinx.coroutines.withContext
  */
 class CalculatorViewModel(
     private val history: HistoryDao,
-    private val settingsRepository: SettingsRepository,
-    private val savedStateHandle: SavedStateHandle
+    private val settingsRepository: SettingsStore,
+    private val savedStateHandle: SavedStateHandle,
+    /** 求值线程。测试传入单线程调度器，让事件处理变成确定性的。 */
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
 
     private val engine = CalculatorEngine()
     private val local = MutableStateFlow(restore())
+
+    /**
+     * 未经 `state` 合流的原始状态。
+     *
+     * 给测试用：`state` 是 `WhileSubscribed` 的分享流，没有订阅者时永远是初始值，
+     * 断言它就得先起一个收集协程，反而把测试搞得更脆。
+     */
+    internal val currentState: CalculatorUiState get() = local.value
 
     init {
         restoreResult()
@@ -162,7 +173,7 @@ class CalculatorViewModel(
             // 显示模式必须现读 DataStore：`local` 里那份只在切换时才写，用它会让
             // 「精确分数」这个设置对求值完全失效——界面显示选中，结果照旧是小数。
             val preferences = currentSettings()
-            val outcome = withContext(Dispatchers.Default) {
+            val outcome = withContext(computeDispatcher) {
                 engine.evaluate(
                     mode = snapshot.mode,
                     input = snapshot.expression,
@@ -198,7 +209,7 @@ class CalculatorViewModel(
         if (!snapshot.canSubstitute) return
         viewModelScope.launch {
             val preferences = currentSettings()
-            val outcome = withContext(Dispatchers.Default) {
+            val outcome = withContext(computeDispatcher) {
                 engine.substitute(
                     expression = snapshot.expression,
                     variable = snapshot.substituteVariable,
@@ -238,7 +249,7 @@ class CalculatorViewModel(
 
         viewModelScope.launch {
             val preferences = currentSettings()
-            val outcome = withContext(Dispatchers.Default) {
+            val outcome = withContext(computeDispatcher) {
                 engine.matrix(operation, preferences.displayMode)
             }
             mutate { it.copy(result = outcome.block) }
@@ -259,7 +270,7 @@ class CalculatorViewModel(
         if (snapshot.mode == CalculatorMode.MATRIX || snapshot.expression.isBlank()) return
         viewModelScope.launch {
             val preferences = currentSettings()
-            val outcome = withContext(Dispatchers.Default) {
+            val outcome = withContext(computeDispatcher) {
                 engine.evaluate(
                     mode = snapshot.mode,
                     input = snapshot.expression,
@@ -376,7 +387,7 @@ class CalculatorViewModel(
         private const val KEY_MATRIX_LEFT = "matrixLeft"
         private const val KEY_MATRIX_RIGHT = "matrixRight"
 
-        fun factory(history: HistoryDao, settings: SettingsRepository): ViewModelProvider.Factory =
+        fun factory(history: HistoryDao, settings: SettingsStore): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {
                     CalculatorViewModel(history, settings, createSavedStateHandle())

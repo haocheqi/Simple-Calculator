@@ -53,7 +53,7 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 ./.gradle-dist/gradle-8.10.2/bin/gradle.bat test
 ```
 
-**207 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）、`feature/calculator`（矩阵形状推导、错误文案本地化完整性）、`data`（用真实 SQLite 跑迁移 SQL，断言老数据不丢、新列非空且默认为 0），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
+**223 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）、`feature/calculator`（矩阵形状推导、键盘布局、输入编辑、事件层 ViewModel、错误文案本地化完整性）、`data`（用真实 SQLite 跑迁移 SQL，断言老数据不丢、新列非空且默认为 0），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
 
 排版引擎（`:core:mathui`）目前只有编译期保证，**没有自动化视觉测试**——它需要设备或模拟器。`docs/ACCEPTANCE.md` 的 H01/H02 必须人工验收。
 
