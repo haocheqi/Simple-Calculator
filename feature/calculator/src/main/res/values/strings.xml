@@ -73,4 +73,36 @@
     <string name="substitute_value">Value</string>
     <string name="substitute_action">Substitute</string>
 
+
+    <!-- 错误文案：按 MathError 类型映射，detail 里的英文不展示 -->
+    <string name="error_division_by_zero">Cannot divide by zero</string>
+    <string name="error_undefined">Undefined for this operation</string>
+    <string name="error_parse">Invalid expression</string>
+    <string name="error_domain">Out of the supported range</string>
+    <string name="error_dimension">Matrix sizes do not match</string>
+    <string name="error_singular_matrix">This matrix is not invertible</string>
+    <string name="error_depth_limit">Expression nests too deeply</string>
+    <string name="error_input_too_long">Expression is too long</string>
+    <string name="error_not_available">%1$s is not available yet</string>
+    <string name="error_needs_integer">An integer is required</string>
+    <string name="error_needs_non_negative">A non-negative integer is required</string>
+    <string name="error_factorial_limit">Factorials are limited to %1$d</string>
+    <string name="error_needs_unit_interval">The argument must be within [-1, 1]</string>
+    <string name="error_needs_positive">A positive number is required</string>
+    <string name="error_log_base_one">A logarithm base cannot be 1</string>
+    <string name="error_missing_variable">No value given for %1$s</string>
+    <string name="error_clamp_range">The lower bound exceeds the upper bound</string>
+    <string name="error_atan2_origin">atan2(0, 0) is undefined</string>
+    <string name="error_needs_square">This operation needs a square matrix</string>
+    <string name="error_shape_mismatch">The two matrices have incompatible sizes</string>
+    <string name="error_argument_too_large">The argument is too large</string>
+    <string name="unsupported_matrix_panel">Use the matrix panel for matrices</string>
+    <string name="unsupported_polynomial_division">Polynomial division is not supported</string>
+    <string name="unsupported_polynomial_exponent">Polynomials need integer exponents</string>
+    <string name="unsupported_modulo">Modulo is not available in exact mode</string>
+    <string name="unsupported_fractional_exponent">Fractional exponents are not exact</string>
+    <string name="unsupported_factorial">Factorials are not computed exactly</string>
+    <string name="unsupported_functions">Functions are not exact</string>
+    <string name="unsupported_ans">ans is not exact</string>
+    <string name="unsupported_variable">%1$s is not an exact value</string>
 </resources>

@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.hpcalc.core.model.MathBlock
+import com.hpcalc.core.model.MathError
 import kotlin.math.max
 
 /** 数学排版样式。颜色必须由调用方从主题里取；未指定时退化为黑白。 */
@@ -47,10 +48,11 @@ fun measureMathBlock(
     block: MathBlock,
     measurer: TextMeasurer,
     style: MathTextStyle,
-    density: Density
+    density: Density,
+    errorText: (MathError) -> String = { it.message }
 ): MeasuredBlock {
     val fontSizePx = with(density) { style.fontSize.toPx() }
-    return Typesetter(measurer, style, fontSizePx).measure(block)
+    return Typesetter(measurer, style, fontSizePx, errorText).measure(block)
 }
 
 private fun Color.orElse(fallback: Color): Color = if (isSpecified) this else fallback
@@ -58,7 +60,8 @@ private fun Color.orElse(fallback: Color): Color = if (isSpecified) this else fa
 private class Typesetter(
     private val measurer: TextMeasurer,
     private val style: MathTextStyle,
-    private val fontSizePx: Float
+    private val fontSizePx: Float,
+    private val errorText: (MathError) -> String
 ) {
     private val textColor = style.color.orElse(Color(0xFF1B1B1F))
     private val structureColor = style.accentColor.orElse(textColor)
@@ -75,7 +78,7 @@ private class Typesetter(
         is MathBlock.Symbol -> text(block.name, baseStyle)
         is MathBlock.Operator -> text(block.text, baseStyle)
         is MathBlock.Text -> text(block.value, baseStyle)
-        is MathBlock.Error -> text(block.error.message, errorStyle)
+        is MathBlock.Error -> text(errorText(block.error), errorStyle)
         is MathBlock.Row -> row(block.children)
         is MathBlock.Fraction -> fraction(block.numerator, block.denominator)
         is MathBlock.Power -> power(block.base, block.exponent)
@@ -86,7 +89,8 @@ private class Typesetter(
     private fun scaled(scale: Float): Typesetter = Typesetter(
         measurer = measurer,
         style = style.copy(fontSize = style.fontSize * scale),
-        fontSizePx = fontSizePx * scale
+        fontSizePx = fontSizePx * scale,
+        errorText = errorText
     )
 
     private fun empty(): MeasuredBlock = MeasuredBlock(0f, 0f, 0f) { _, _ -> }

@@ -2,6 +2,8 @@ package com.hpcalc.core.math
 
 import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
+import com.hpcalc.core.model.UnsupportedFeature
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.MathContext
@@ -98,7 +100,7 @@ class RationalEvaluator {
             if (exponent.signum() == 0) return ONE
             val magnitude = exponent.abs()
             if (magnitude > MAX_EXPONENT) {
-                throw ExactException(MathError.DomainError("exponent is too large for an exact result"))
+                throw ExactException(MathError.DomainError("exponent is too large for an exact result", MathIssue.ArgumentTooLarge))
             }
             val e = magnitude.toInt()
             val n = numerator.pow(e)
@@ -229,7 +231,7 @@ class RationalEvaluator {
                 if (t is Token.Op && (t.value == '*' || t.value == '/' || t.value == '%')) {
                     take()
                     // 取模在有理数域上不成立，明确报不支持而不是悄悄给出小数。
-                    if (t.value == '%') throw ExactException(MathError.Unsupported("modulo is not exact"))
+                    if (t.value == '%') throw ExactException(MathError.Unsupported(UnsupportedFeature.MODULO))
                     val right = parseUnary()
                     value = if (t.value == '*') value.times(right) else value.divideBy(right)
                 } else {
@@ -267,7 +269,7 @@ class RationalEvaluator {
                     take()
                     val exponent = parseUnary()
                     if (!exponent.isInteger) {
-                        throw ExactException(MathError.Unsupported("fractional exponent is not exact"))
+                        throw ExactException(MathError.Unsupported(UnsupportedFeature.FRACTIONAL_EXPONENT))
                     }
                     return base.pow(exponent.numerator)
                 } finally {
@@ -282,7 +284,7 @@ class RationalEvaluator {
             while (true) {
                 val t = peek()
                 if (t is Token.Op && t.value == '!') {
-                    throw ExactException(MathError.Unsupported("factorial is not computed exactly"))
+                    throw ExactException(MathError.Unsupported(UnsupportedFeature.FACTORIAL))
                 }
                 break
             }
@@ -295,11 +297,11 @@ class RationalEvaluator {
             is Token.Name -> {
                 if (peek() is Token.Left) {
                     // 函数调用一律不支持：sin/ln/√ 都不可能给出精确有理数。
-                    throw ExactException(MathError.Unsupported("functions are not exact"))
+                    throw ExactException(MathError.Unsupported(UnsupportedFeature.FUNCTIONS))
                 }
                 when (t.value.lowercase()) {
-                    "ans" -> throw ExactException(MathError.Unsupported("ans is not exact"))
-                    else -> throw ExactException(MathError.Unsupported("'${t.value}' is not exact"))
+                    "ans" -> throw ExactException(MathError.Unsupported(UnsupportedFeature.ANS))
+                    else -> throw ExactException(MathError.Unsupported(UnsupportedFeature.VARIABLE, t.value))
                 }
             }
 

@@ -1,8 +1,10 @@
 package com.hpcalc.core.math
 
 import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.SymbolicEvaluator
 import com.hpcalc.core.model.SymbolicResult
+import com.hpcalc.core.model.UnsupportedFeature
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
@@ -145,7 +147,7 @@ class PolynomialCalculator : SymbolicEvaluator {
         } catch (e: SymbolicException) {
             SymbolicResult.Error(e.error)
         } catch (e: Poly.MissingValue) {
-            SymbolicResult.Error(MathError.DomainError("missing value for '${e.name}'"))
+            SymbolicResult.Error(MathError.DomainError("missing value for '${e.name}'", MathIssue.MissingVariable(e.name)))
         } catch (e: Exception) {
             SymbolicResult.Error(MathError.ParseError(e.message ?: "invalid polynomial"))
         }
@@ -212,7 +214,7 @@ class PolynomialCalculator : SymbolicEvaluator {
             when {
                 t is Token.Op && (t.value == '*' || t.value == '/') -> {
                     take()
-                    if (t.value == '/') fail(MathError.Unsupported("polynomial division"))
+                    if (t.value == '/') fail(MathError.Unsupported(UnsupportedFeature.POLYNOMIAL_DIVISION))
                     value = value.times(parseUnary())
                 }
                 // 隐式乘法：2x、(x+1)(x-1)、2(x+3)
@@ -248,7 +250,7 @@ class PolynomialCalculator : SymbolicEvaluator {
             take()
             val exponentToken = take()
             if (exponentToken !is Token.Number || exponentToken.value.stripTrailingZeros().scale() > 0) {
-                fail(MathError.Unsupported("non-integer exponent in a polynomial"))
+                fail(MathError.Unsupported(UnsupportedFeature.POLYNOMIAL_NON_INTEGER_EXPONENT))
             }
             return base.pow(exponentToken.value.toInt())
         }

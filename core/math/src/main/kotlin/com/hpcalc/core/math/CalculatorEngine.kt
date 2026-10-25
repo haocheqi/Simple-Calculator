@@ -9,6 +9,7 @@ import com.hpcalc.core.model.MathError
 import com.hpcalc.core.model.MatrixOperation
 import com.hpcalc.core.model.MatrixResult
 import com.hpcalc.core.model.SymbolicResult
+import com.hpcalc.core.model.UnsupportedFeature
 import com.hpcalc.core.model.toMathBlock
 import java.math.BigDecimal
 
@@ -83,7 +84,7 @@ class CalculatorEngine(
 
             // 矩阵模式由专用面板驱动，不走表达式求值。
             CalculatorMode.MATRIX -> Outcome(
-                MathBlock.Error(MathError.Unsupported("matrix mode uses the matrix panel")),
+                MathBlock.Error(MathError.Unsupported(UnsupportedFeature.MATRIX_PANEL)),
                 succeeded = false
             )
         }

@@ -6,15 +6,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.hpcalc.core.model.MathBlock
+import com.hpcalc.core.model.MathError
 
 /** 允许在子树里统一覆盖数学排版样式。 */
 val LocalMathTextStyle = compositionLocalOf { MathTextStyle() }
+
+/**
+ * 错误文案的解析器。
+ *
+ * 排版层不认识资源文件，所以默认用 [MathError.message] 这个英文兜底；
+ * 界面层应当用 `CompositionLocalProvider` 提供按 `strings.xml` 翻译过的版本。
+ * `static` 变体是刻意的：语言切换会重建 Activity，此时整棵子树都该重排。
+ */
+val LocalMathErrorText = staticCompositionLocalOf<(MathError) -> String> { { it.message } }
 
 /** 从 Material 主题取一套数学排版样式。 */
 @Composable
@@ -47,8 +58,9 @@ fun MathBlockView(
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val measured = remember(block, style, density, measurer) {
-        measureMathBlock(block, measurer, style, density)
+    val errorText = LocalMathErrorText.current
+    val measured = remember(block, style, density, measurer, errorText) {
+        measureMathBlock(block, measurer, style, density, errorText)
     }
 
     Canvas(

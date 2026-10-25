@@ -67,4 +67,36 @@
     <string name="substitute_value">数值</string>
     <string name="substitute_action">代入</string>
 
+
+    <!-- 错误文案：按 MathError 类型映射，detail 里的英文不展示 -->
+    <string name="error_division_by_zero">不能除以零</string>
+    <string name="error_undefined">该运算无定义</string>
+    <string name="error_parse">表达式无效</string>
+    <string name="error_domain">超出可计算范围</string>
+    <string name="error_dimension">矩阵尺寸不匹配</string>
+    <string name="error_singular_matrix">该矩阵不可逆</string>
+    <string name="error_depth_limit">表达式嵌套过深</string>
+    <string name="error_input_too_long">表达式过长</string>
+    <string name="error_not_available">%1$s 尚不可用</string>
+    <string name="error_needs_integer">需要整数</string>
+    <string name="error_needs_non_negative">需要非负整数</string>
+    <string name="error_factorial_limit">阶乘最大支持 %1$d</string>
+    <string name="error_needs_unit_interval">参数必须在 [-1, 1] 之间</string>
+    <string name="error_needs_positive">需要正数</string>
+    <string name="error_log_base_one">对数的底不能为 1</string>
+    <string name="error_missing_variable">缺少 %1$s 的值</string>
+    <string name="error_clamp_range">下界不能大于上界</string>
+    <string name="error_atan2_origin">atan2(0, 0) 无定义</string>
+    <string name="error_needs_square">该运算需要方阵</string>
+    <string name="error_shape_mismatch">两个矩阵的尺寸不兼容</string>
+    <string name="error_argument_too_large">参数过大</string>
+    <string name="unsupported_matrix_panel">矩阵请使用矩阵面板</string>
+    <string name="unsupported_polynomial_division">不支持多项式除法</string>
+    <string name="unsupported_polynomial_exponent">多项式只接受整数指数</string>
+    <string name="unsupported_modulo">精确模式下不支持取模</string>
+    <string name="unsupported_fractional_exponent">分数指数不是精确值</string>
+    <string name="unsupported_factorial">阶乘不按精确值计算</string>
+    <string name="unsupported_functions">函数不是精确值</string>
+    <string name="unsupported_ans">ans 不是精确值</string>
+    <string name="unsupported_variable">%1$s 不是精确值</string>
 </resources>

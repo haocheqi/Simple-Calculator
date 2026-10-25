@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hpcalc.core.designsystem.CalculatorTheme
+import com.hpcalc.feature.calculator.LocalizedMathErrors
 import com.hpcalc.core.model.ThemeMode
 import com.hpcalc.feature.calculator.CalculatorViewModel
 
@@ -39,15 +40,18 @@ class MainActivity : ComponentActivity() {
             }
 
             CalculatorTheme(darkTheme = darkTheme) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    CalculatorNavHost(
-                        state = state,
-                        onEvent = viewModel::onEvent,
-                        versionName = BuildConfig.VERSION_NAME
-                    )
+                // 错误文案的本地化解析器从这里注入，排版层只负责画。
+                LocalizedMathErrors {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        CalculatorNavHost(
+                            state = state,
+                            onEvent = viewModel::onEvent,
+                            versionName = BuildConfig.VERSION_NAME
+                        )
+                    }
                 }
             }
         }

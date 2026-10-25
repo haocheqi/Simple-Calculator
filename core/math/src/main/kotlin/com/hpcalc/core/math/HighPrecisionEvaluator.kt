@@ -5,6 +5,7 @@ import com.hpcalc.core.model.AngleUnit
 import com.hpcalc.core.model.EvaluationContext
 import com.hpcalc.core.model.EvaluationResult
 import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.NumericEvaluator
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -262,9 +263,9 @@ class HighPrecisionEvaluator : NumericEvaluator {
     }
 
     private fun factorial(x: BigDecimal): BigDecimal {
-        if (x.stripTrailingZeros().scale() > 0) fail(MathError.DomainError("factorial needs an integer"))
-        if (x.signum() < 0) fail(MathError.DomainError("factorial needs a non-negative integer"))
-        if (x > BigDecimal(MAX_FACTORIAL)) fail(MathError.DomainError("factorial is limited to $MAX_FACTORIAL"))
+        if (x.stripTrailingZeros().scale() > 0) fail(MathError.DomainError("factorial needs an integer", MathIssue.NeedsInteger))
+        if (x.signum() < 0) fail(MathError.DomainError("factorial needs a non-negative integer", MathIssue.NeedsNonNegativeInteger))
+        if (x > BigDecimal(MAX_FACTORIAL)) fail(MathError.DomainError("factorial is limited to $MAX_FACTORIAL", MathIssue.FactorialLimit(MAX_FACTORIAL)))
         var result = BigDecimal.ONE
         for (i in 2..x.toInt()) result = result.multiply(BigDecimal(i), mc)
         return result
@@ -322,7 +323,7 @@ class HighPrecisionEvaluator : NumericEvaluator {
                 requirePositive(base, n)
                 requirePositive(x, n)
                 if (base.compareTo(BigDecimal.ONE) == 0) {
-                    fail(MathError.DomainError("logarithm base must not be 1"))
+                    fail(MathError.DomainError("logarithm base must not be 1", MathIssue.LogBaseOne))
                 }
                 BigDecimalMath.log(x, mc).divide(BigDecimalMath.log(base, mc), mc)
             }
@@ -352,7 +353,7 @@ class HighPrecisionEvaluator : NumericEvaluator {
             "clamp" -> {
                 if (args.size != 3) fail(MathError.ParseError("clamp expects exactly 3 arguments"))
                 val (x, low, high) = args
-                if (low > high) fail(MathError.DomainError("clamp lower bound exceeds upper bound"))
+                if (low > high) fail(MathError.DomainError("clamp lower bound exceeds upper bound", MathIssue.ClampRange))
                 x.coerceIn(low, high)
             }
 
@@ -437,16 +438,16 @@ class HighPrecisionEvaluator : NumericEvaluator {
     }
 
     private fun requireInteger(value: BigDecimal, name: String) {
-        if (value.stripTrailingZeros().scale() > 0) fail(MathError.DomainError("$name expects integers"))
+        if (value.stripTrailingZeros().scale() > 0) fail(MathError.DomainError("$name expects integers", MathIssue.NeedsInteger))
     }
 
     /** 把参数收成一个小整数，超过上限直接拒绝，避免用巨大参数把 UI 卡死。 */
     private fun requireCount(value: BigDecimal, name: String, positive: Boolean = false): Int {
         requireInteger(value, name)
-        if (positive && value.signum() <= 0) fail(MathError.DomainError("$name expects a positive integer"))
-        if (!positive && value.signum() < 0) fail(MathError.DomainError("$name expects a non-negative integer"))
+        if (positive && value.signum() <= 0) fail(MathError.DomainError("$name expects a positive integer", MathIssue.NeedsPositive))
+        if (!positive && value.signum() < 0) fail(MathError.DomainError("$name expects a non-negative integer", MathIssue.NeedsNonNegativeInteger))
         if (value > BigDecimal(MAX_COUNT_ARGUMENT)) {
-            fail(MathError.DomainError("$name argument is too large"))
+            fail(MathError.DomainError("$name argument is too large", MathIssue.ArgumentTooLarge))
         }
         return value.toInt()
     }
@@ -461,7 +462,7 @@ class HighPrecisionEvaluator : NumericEvaluator {
             x.signum() < 0 && y.signum() < 0 -> BigDecimalMath.atan(ratio, mc).subtract(pi, mc)
             y.signum() > 0 -> halfPi
             y.signum() < 0 -> halfPi.negate()
-            else -> fail(MathError.DomainError("atan2(0, 0) is undefined"))
+            else -> fail(MathError.DomainError("atan2(0, 0) is undefined", MathIssue.Atan2Origin))
         }
     }
 
@@ -527,11 +528,11 @@ class HighPrecisionEvaluator : NumericEvaluator {
     }
 
     private fun requireUnitInterval(x: BigDecimal, fn: String) {
-        if (x.abs() > BigDecimal.ONE) fail(MathError.DomainError("$fn needs an argument in [-1, 1]"))
+        if (x.abs() > BigDecimal.ONE) fail(MathError.DomainError("$fn needs an argument in [-1, 1]", MathIssue.NeedsUnitInterval))
     }
 
     private fun requirePositive(x: BigDecimal, fn: String) {
-        if (x.signum() <= 0) fail(MathError.DomainError("$fn needs a positive argument"))
+        if (x.signum() <= 0) fail(MathError.DomainError("$fn needs a positive argument", MathIssue.NeedsPositive))
     }
 
     private fun isDivisionByZero(e: ArithmeticException): Boolean {

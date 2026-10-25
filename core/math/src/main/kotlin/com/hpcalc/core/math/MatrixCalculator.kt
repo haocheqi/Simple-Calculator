@@ -1,6 +1,7 @@
 package com.hpcalc.core.math
 
 import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.Matrix
 import com.hpcalc.core.model.MatrixEvaluator
 import com.hpcalc.core.model.MatrixOperation
@@ -49,7 +50,7 @@ class MatrixCalculator(
         combine: (BigDecimal, BigDecimal) -> BigDecimal
     ): MatrixResult {
         if (left.rowCount != right.rowCount || left.columnCount != right.columnCount) {
-            fail(MathError.DimensionMismatch("both operands must be ${left.rowCount}×${left.columnCount}"))
+            fail(MathError.DimensionMismatch("both operands must be ${left.rowCount}×${left.columnCount}", MathIssue.MatrixShapeMismatch))
         }
         return MatrixResult.Success(
             Matrix(left.rows.zip(right.rows) { leftRow, rightRow -> leftRow.zip(rightRow, combine) })
@@ -58,7 +59,7 @@ class MatrixCalculator(
 
     private fun multiply(left: Matrix, right: Matrix): MatrixResult {
         if (left.columnCount != right.rowCount) {
-            fail(MathError.DimensionMismatch("left has ${left.columnCount} columns, right has ${right.rowCount} rows"))
+            fail(MathError.DimensionMismatch("left has ${left.columnCount} columns, right has ${right.rowCount} rows", MathIssue.MatrixShapeMismatch))
         }
         val product = Matrix(
             (0 until left.rowCount).map { r ->
@@ -73,7 +74,7 @@ class MatrixCalculator(
     }
 
     private fun determinant(matrix: Matrix): BigDecimal {
-        if (!matrix.isSquare) fail(MathError.DimensionMismatch("determinant needs a square matrix"))
+        if (!matrix.isSquare) fail(MathError.DimensionMismatch("determinant needs a square matrix", MathIssue.NeedsSquareMatrix))
         return determinantUnchecked(matrix)
     }
 
@@ -98,7 +99,7 @@ class MatrixCalculator(
         )
 
     private fun inverse(matrix: Matrix): MatrixResult {
-        if (!matrix.isSquare) fail(MathError.DimensionMismatch("inverse needs a square matrix"))
+        if (!matrix.isSquare) fail(MathError.DimensionMismatch("inverse needs a square matrix", MathIssue.NeedsSquareMatrix))
         val n = matrix.rowCount
         val augmented = Array(n) { r ->
             Array(2 * n) { c ->

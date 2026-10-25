@@ -13,6 +13,7 @@
 - 多项式展开、合并同类项、化简、隐式乘法，以及**代入求值**（变量名 + 取值，取值可以是表达式如 `π/2`）。
 - 最多 6×6 实数矩阵：加减乘、行列式、逆、转置、秩，**支持非方阵**（B 的形状按运算自动推导）。
 - 公式排版用 Compose 自绘：基线对齐、真分式、上下标、根式、矩阵定界符。**不使用 WebView**。
+- 错误提示按类型结构化并本地化（中英各 30 条），英文技术细节只进日志，不显示在界面上。
 - Room 历史记录（可置顶）、DataStore 设置、Material 3 深浅主题（含 `values-night` 冷启动底色）。
 
 ## 构建
@@ -49,7 +50,7 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 ./.gradle-dist/gradle-8.10.2/bin/gradle.bat test
 ```
 
-**170 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）、`feature/calculator`（矩阵形状推导）、`data`（用真实 SQLite 跑迁移 SQL，断言老数据不丢、新列非空且默认为 0），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
+**176 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）、`feature/calculator`（矩阵形状推导、错误文案本地化完整性）、`data`（用真实 SQLite 跑迁移 SQL，断言老数据不丢、新列非空且默认为 0），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
 
 排版引擎（`:core:mathui`）目前只有编译期保证，**没有自动化视觉测试**——它需要设备或模拟器。`docs/ACCEPTANCE.md` 的 H01/H02 必须人工验收。
 
