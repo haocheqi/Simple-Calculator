@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                         CalculatorNavHost(
                             state = state,
                             onEvent = viewModel::onEvent,
-                            versionName = BuildConfig.VERSION_NAME
+                            versionName = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
                         )
                     }
                 }

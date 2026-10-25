@@ -22,7 +22,7 @@ android {
         applicationId = "com.hpcalc.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
+        versionCode = 7
         versionName = "3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

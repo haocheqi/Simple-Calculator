@@ -138,4 +138,15 @@ class InputEditingTest {
         )
         assertTrue(state.canToggleForm)
     }
+
+    @Test
+    fun `settings are not duplicated inside the ui state`() {
+        // 设置只有一个事实来源：DataStore -> state.settings。
+        // 状态里再存一份 displayMode 副本，求值时读到旧值，会让「精确分数」设置彻底失效——
+        // 这个 bug 真的发生过，所以用测试钉住结构。
+        val fields = CalculatorUiState::class.java.declaredFields.map { it.name }.toSet()
+        assertFalse("displayMode 应从 state.settings 读", "displayMode" in fields)
+        assertFalse("angleUnit 应从 state.settings 读", "angleUnit" in fields)
+        assertTrue("settings 必须在状态里", "settings" in fields)
+    }
 }

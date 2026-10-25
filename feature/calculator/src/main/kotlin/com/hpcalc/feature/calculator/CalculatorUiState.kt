@@ -2,9 +2,7 @@ package com.hpcalc.feature.calculator
 
 import com.hpcalc.core.data.HistoryEntity
 import com.hpcalc.core.data.Settings
-import com.hpcalc.core.model.AngleUnit
 import com.hpcalc.core.model.CalculatorMode
-import com.hpcalc.core.model.DisplayMode
 import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.plainText
 import java.math.BigDecimal
@@ -103,8 +101,8 @@ data class CalculatorUiState(
     val mode: CalculatorMode = CalculatorMode.BASIC,
     val expression: String = "",
     val result: MathBlock = MathBlock.Number("0"),
-    val displayMode: DisplayMode = DisplayMode.DECIMAL,
-    val angleUnit: AngleUnit = AngleUnit.RADIANS,
+
+
     val ans: BigDecimal? = null,
     val history: List<HistoryEntity> = emptyList(),
     val settings: Settings = Settings(),
