@@ -1,69 +1,32 @@
-# Calculator（高精度计算器）
+# Simple Calculator
 
-面向 Android 10（API 29）及以上的高精度多模式计算器。内部 50 位 `BigDecimal` 精度，默认显示 16 位有效数字。
+[English](README.en.md) | **简体中文**
 
-当前处于 **v3.0**（三个阶段代码均已完成，手工验收待执行）。长期计划见 [docs/ROADMAP.md](docs/ROADMAP.md)，验收清单见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)，发布流程见 [docs/RELEASING.md](docs/RELEASING.md)，变更记录见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
+Android 计算器。使用 Kotlin 与 Jetpack Compose 编写。不申请任何权限。不联网。不收集数据。
 
 ## 功能
 
-- 普通和科学计算：50 位内部精度，默认显示 16 位有效数字。
-- 三角、反三角、双曲、对数、指数、阶乘、取模；另有 `gcd`、`lcm`、`comb`、`perm`、`min`、`max`、`clamp`、`sum`、`mean`、`median`、`stdev`、`cbrt`、`root`、`logb`、`atan2`、`deg`、`rad`，支持多参数与嵌套。
-- 角度制：弧度 / 角度 / 百分度，设置里可改，反三角结果会还原到所选单位。
-- 显示模式：小数、工程记数、**精确分数**（`1/3` 渲染成真分式；遇到必然产生无理数的运算自动退回小数，不伪造分数）。
-- 多项式展开、合并同类项、化简、隐式乘法，以及**代入求值**（变量名 + 取值，取值可以是表达式如 `π/2`）。
-- 最多 6×6 实数矩阵：加减乘、行列式、逆、转置、秩，**支持非方阵**（B 的形状按运算自动推导）；逆用有理数消元，输出**真分式**。
-- 公式排版用 Compose 自绘：基线对齐、真分式、上下标、根式、矩阵定界符。**不使用 WebView**。
-- 输入可编辑：带退格键，点击算式任意位置即可移动光标；结果区的 `S⇔D` 在小数与精确分数之间切换。
-- 错误提示按类型结构化并本地化（中英各 30 条），英文技术细节只进日志，不显示在界面上。
-- Room 历史记录（可置顶）、DataStore 设置、Material 3 深浅主题（含 `values-night` 冷启动底色）。
+- 四种模式：简单、科学、符号、矩阵。
+- 高精度：内部保留 50 位有效数字，界面显示 16 位。
+- 精确分数：显示真分式。按 `S⇔D` 键切换小数与分数。
+- 三角函数与其它科学键：sin、cos、tan、asin、acos、atan、ln、log、√、abs、n!、%、x²、xʸ、π、e、ans。
+- 数值函数：gcd、lcm、comb、perm、min、max、clamp、sum、mean、median、stdev、cbrt、root、logb、atan2、deg、rad。支持多参数与嵌套调用。
+- 符号模式：化简多项式。代入数值求值。
+- 矩阵：2×2 至 6×6。做加、减、乘、行列式、逆、转置、秩。逆与行列式显示精确分数。
+- 角度单位：弧度、角度、百分度。
+- 显示模式：小数、工程记数、精确分数。
+- 历史记录：保存、置顶、复用、清空。
+- 主题：跟随系统、浅色、深色。
+- 界面语言：中文、英文。
 
 ## 构建
 
-需要 JDK 17 与 Android SDK 35。仓库带 wrapper，首次构建会自行下载 Gradle 8.10.2：
+需要 JDK 17 和 Android SDK 35。
 
-```powershell
-./gradlew test assembleDebug
-```
+1. 运行 `git clone <仓库地址>`。
+2. 在仓库根目录运行 `./gradlew assembleDebug`。
+3. 在 `app/build/outputs/apk/debug/` 取 `app-debug.apk`。
 
-日常开发用的是「本地发行版 + 本地依赖缓存」，避免重复下载（`.gradle-dist/`、`.gradle-home/` 都不入库，换机器要么重新准备，要么用上面的 wrapper）：
+运行 `./gradlew test` 执行单元测试。
 
-```powershell
-$env:GRADLE_USER_HOME = "$PWD\.gradle-home"
-./.gradle-dist/gradle-8.10.2/bin/gradle.bat test assembleDebug
-```
-
-Debug APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`；release 走 `assembleRelease`（R8 + 签名），签名材料与发布步骤见 [docs/RELEASING.md](docs/RELEASING.md)。
-
-发版前跑一遍打包闸门：pwsh ./scripts/verify-release.ps1 -ExpectedVersion <版本>——校验包名、版本号、发布证书、被资源压缩裁掉的中文文案、图标与 manifest 里的 Application。
-
-Android SDK 位于仓库根目录下的 `android-sdk\`，由 `local.properties` 的 `sdk.dir` 指定；换机器时改这个文件即可。
-
-## 工程结构
-
-```
-:app                  应用壳：Application、依赖容器、MainActivity、NavHost
-:core:model           领域模型：MathBlock / Matrix / AngleUnit / MathError / DisplayMode / ThemeMode
-:core:math            CalculatorEngine（模式分派）、数值求值、多项式、矩阵、格式化
-:core:mathui          数学排版引擎（自定义 Canvas 绘制，无 WebView/KaTeX）
-:core:designsystem    主题、色板、尺寸 token、按键组件
-:data                 Room 历史记录与 DataStore 设置
-:feature:calculator   UiState / UiEvent / ViewModel 与四个界面
-```
-
-规则：`core` 模块不依赖 Android 框架；界面无状态，只接受 `CalculatorUiState` 并上抛 `CalculatorUiEvent`；模块间只通过 `:core:model` 的类型通信。
-
-## 测试
-
-```powershell
-./gradlew test
-```
-
-本机等价命令见「构建」一节（用本地发行版与本地缓存，不重复下载）。
-
-**236 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）、`feature/calculator`（矩阵形状推导、键盘布局、输入编辑、事件层 ViewModel、错误文案本地化完整性）、`data`（用真实 SQLite 跑迁移 SQL，断言老数据不丢、新列非空且默认为 0），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
-
-排版引擎（`:core:mathui`）目前只有编译期保证，**没有自动化视觉测试**——它需要设备或模拟器。`docs/ACCEPTANCE.md` 的 H01/H02 必须人工验收。
-
-## 依赖许可
-
-超越函数使用 `ch.obermuhlner:big-math`（MIT）；AndroidX、Compose、Room 和 DataStore 依照各自 Apache 2.0 许可分发。运行时不引入任何数学排版库或 WebView。
+签名与发布步骤见 [docs/RELEASING.md](docs/RELEASING.md)。
