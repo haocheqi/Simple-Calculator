@@ -26,8 +26,7 @@ keyPassword=<同上>
 ## 本地出包
 
 ```powershell
-$env:GRADLE_USER_HOME = "$PWD\.gradle-home"
-./.gradle-dist/gradle-8.10.2/bin/gradle.bat assembleRelease
+./gradlew assembleRelease
 ```
 
 产物：`app/build/outputs/apk/release/app-release.apk`（R8 + 资源压缩 + 签名）。
@@ -43,11 +42,10 @@ pwsh ./scripts/verify-release.ps1 -ExpectedVersion 3.0 -ExpectedVersionCode 9
 `isShrinkResources` 有没有把只在代码里按 id 引用的中文资源裁掉、自适应图标资源、
 manifest 里的 `Application`、以及体积是否合理。CI 在发布标签上跑同一个脚本。
 
-只查签名时也可以直接用：
+只查签名时也可以直接用 `apksigner`（在 Android SDK 的 `build-tools/<版本>/` 下）：
 
 ```powershell
-./android-sdk/build-tools/34.0.0/apksigner.bat verify --print-certs `
-  app/build/outputs/apk/release/app-release.apk
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
 ```
 
 ## 版本号
@@ -71,8 +69,9 @@ manifest 里的 `Application`、以及体积是否合理。CI 在发布标签上
 发布步骤：
 
 ```powershell
-git tag v3.0
-git push origin main --tags
+git tag -a v3.0 -m "Simple Calculator 3.0"
+git push origin main
+git push origin v3.0
 ```
 
 CI 会把 `app-release.apk` 与 `app-release.apk.sha256` 挂到 Release 上。
@@ -83,12 +82,8 @@ CI 会把 `app-release.apk` 与 `app-release.apk.sha256` 挂到 Release 上。
 
 debug 包与 release 包签名不同，**互相覆盖安装会报签名冲突**，切换前先卸载。
 
-## 已知的验收欠账
+## 验收
 
-本地环境没有真机、没有模拟器、没有系统镜像，所以：
+发版前按 `docs/ACCEPTANCE.md` 过一遍（50 条）。v3.0 已全部通过，验收在 `3.0 (9)` 上完成。
 
-- 排版引擎只有编译期保证，没有视觉证据；
-- Room 的 `Migration(1, 2)` 无法在本地跑通（需要一台装过 v1 数据库的设备升级验证）；
-- `docs/ACCEPTANCE.md` 里依赖运行时的条目必须人工执行。
-
-发版前请先按 `docs/ACCEPTANCE.md` 过一遍。
+排版引擎没有自动化视觉测试，依赖人工验收——它需要设备或模拟器。
