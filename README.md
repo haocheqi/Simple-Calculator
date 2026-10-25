@@ -19,10 +19,16 @@
 
 ## 构建
 
-工程使用本地 Gradle 发行版与本地依赖缓存，不依赖 `gradlew` 的联网下载：
+需要 JDK 17 与 Android SDK 35。仓库带 wrapper，首次构建会自行下载 Gradle 8.10.2：
 
 ```powershell
-$env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
+./gradlew test assembleDebug
+```
+
+日常开发用的是「本地发行版 + 本地依赖缓存」，避免重复下载（`.gradle-dist/`、`.gradle-home/` 都不入库，换机器要么重新准备，要么用上面的 wrapper）：
+
+```powershell
+$env:GRADLE_USER_HOME = "$PWD\.gradle-home"
 ./.gradle-dist/gradle-8.10.2/bin/gradle.bat test assembleDebug
 ```
 
@@ -30,7 +36,7 @@ Debug APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`；release 走 `a
 
 发版前跑一遍打包闸门：pwsh ./scripts/verify-release.ps1 -ExpectedVersion <版本>——校验包名、版本号、发布证书、被资源压缩裁掉的中文文案、图标与 manifest 里的 Application。
 
-Android SDK 位于 `E:\code\calculate\android-sdk`，由 `local.properties` 的 `sdk.dir` 指定；其他机器需修改该文件。
+Android SDK 位于仓库根目录下的 `android-sdk\`，由 `local.properties` 的 `sdk.dir` 指定；换机器时改这个文件即可。
 
 ## 工程结构
 
@@ -49,9 +55,10 @@ Android SDK 位于 `E:\code\calculate\android-sdk`，由 `local.properties` 的 
 ## 测试
 
 ```powershell
-$env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
-./.gradle-dist/gradle-8.10.2/bin/gradle.bat test
+./gradlew test
 ```
+
+本机等价命令见「构建」一节（用本地发行版与本地缓存，不重复下载）。
 
 **236 个 JVM 单元测试**：`core/math`（求值、多项式、矩阵、有理数、呈现树、引擎分派）、`feature/calculator`（矩阵形状推导、键盘布局、输入编辑、事件层 ViewModel、错误文案本地化完整性）、`data`（用真实 SQLite 跑迁移 SQL，断言老数据不丢、新列非空且默认为 0），逐条对应 `docs/ACCEPTANCE.md` 的崩溃红线与数学正确性条目。
 

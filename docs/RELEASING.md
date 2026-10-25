@@ -26,7 +26,7 @@ keyPassword=<同上>
 ## 本地出包
 
 ```powershell
-$env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
+$env:GRADLE_USER_HOME = "$PWD\.gradle-home"
 ./.gradle-dist/gradle-8.10.2/bin/gradle.bat assembleRelease
 ```
 

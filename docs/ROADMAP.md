@@ -66,7 +66,6 @@
 
 | 计划 | 实际 | 原因 |
 |---|---|---|
-| 修 `E:\code\calculate` 的 ACL | 由用户把会话切到 full access 绕过 | 该目录所有者是 `Administrators`，当前用户只有 Modify，缺 WRITE_DAC；DSH 无法为其写入沙箱授权。修复脚本需要同一权限，形成死循环，安全地拒绝并回滚。 |
 | —— | `.gitignore` 补全 | 原 `.gitignore` 未覆盖根目录的 6 个 APK 与 13 份构建日志，首次 `git add` 会把 350 MB 产物入库。 |
 | 用 `./gradlew` 构建 | 用 `.gradle-dist\gradle-8.10.2\bin\gradle.bat` | `.gradle-home` 下没有 wrapper 缓存，离线时 `./gradlew` 会去联网取发行版并失败。 |
 | 假定环境离线 | 环境可联网 | 早先 `wrapper.log` 的失败是瞬时网络问题。确认可达后撤掉了临时绕过方案。 |
