@@ -13,10 +13,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# 新建仓库的 GITHUB_TOKEN 默认只读，创建 Release 需要显式写权限；
+# 不给的话 release job 会在最后一步报 403 Resource not accessible by integration。
+permissions:
+  contents: write
+
 jobs:
   verify:
     name: 单元测试与 debug 构建
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -93,6 +100,18 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
+
+      - name: 预检签名材料
+        # Gradle 报 "Keystore was tampered with, or password was incorrect" 时，分不清是
+        # secret 传坏了还是口令填错了。先让 keytool 明确报一次，省一轮排查。
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          ls -l keystore/release.jks
+          keytool -list -keystore keystore/release.jks -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null
+          echo "签名材料可读：$KEY_ALIAS"
 
       - name: 构建 release APK
         run: gradle assembleRelease --console=plain
