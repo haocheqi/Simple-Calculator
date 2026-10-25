@@ -6,6 +6,7 @@ import com.hpcalc.core.model.EvaluationContext
 import com.hpcalc.core.model.EvaluationResult
 import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.MatrixOperation
 import com.hpcalc.core.model.MatrixResult
 import com.hpcalc.core.model.SymbolicResult
@@ -56,12 +57,10 @@ class CalculatorEngine(
                 val exactResult = when (val exact = rational.evaluate(trimmed)) {
                     is RationalResult.Exact -> exact
                     // 真正的错误（除以零、括号不配对）必须如实报出来；
-                    // 只有「这一步无法精确」才继续走小数。
-                    is RationalResult.Error -> if (exact.error !is MathError.Unsupported) {
-                        return Outcome(MathBlock.Error(exact.error), succeeded = false)
-                    } else {
-                        null
-                    }
+                    // 精确形态给不出的情况才继续走小数。
+                    is RationalResult.Error ->
+                        if (exact.error.deferToDecimal()) null
+                        else return Outcome(MathBlock.Error(exact.error), succeeded = false)
                 }
                 if (exactResult != null && displayMode == DisplayMode.EXACT_FRACTION) {
                     val block = exactResult.toMathBlock()
@@ -166,3 +165,15 @@ class CalculatorEngine(
 
 /** 多项式求值器的变量名规则：字母开头，后接字母或数字。 */
 private val VARIABLE_NAME = Regex("[\\p{L}][\\p{L}\\p{N}]*")
+
+/**
+ * 精确路径给不出结果时，是否该安静地退回小数。
+ *
+ * `sin(1)` 没有精确形态，`(1000^10000)^10000` 的精确形态大到没有意义——两者都应该交给
+ * 数值路径决定结果，而不是把用户拦在这里。除以零、括号不配对这类真正的错误不在此列。
+ */
+private fun MathError.deferToDecimal(): Boolean = when (this) {
+    is MathError.Unsupported -> true
+    is MathError.DomainError -> issue == MathIssue.ArgumentTooLarge
+    else -> false
+}

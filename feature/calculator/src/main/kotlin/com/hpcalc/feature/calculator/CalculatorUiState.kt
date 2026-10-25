@@ -6,6 +6,7 @@ import com.hpcalc.core.model.AngleUnit
 import com.hpcalc.core.model.CalculatorMode
 import com.hpcalc.core.model.DisplayMode
 import com.hpcalc.core.model.MathBlock
+import com.hpcalc.core.model.plainText
 import java.math.BigDecimal
 
 /** 矩阵面板支持的运算。 */
@@ -123,8 +124,14 @@ data class CalculatorUiState(
     val shownResult: MathBlock
         get() = if (showsExactFraction && exactResult != null) exactResult else result
 
-    /** S⇔D 只在结果同时具备两种形态时可用。 */
-    val canToggleForm: Boolean get() = exactResult != null
+    /**
+     * S⇔D 只在两种形态**看起来不一样**时才可用。
+     *
+     * 整数结果（`5`、`1/2` 算出的 `0.5` 除外）的小数形态与分数形态是同一个 `5`，
+     * 给出按钮点了却没变化，比不给更让人困惑。
+     */
+    val canToggleForm: Boolean
+        get() = exactResult != null && exactResult.plainText() != result.plainText()
 
     /** 光标是否停在末尾——界面据此决定是否画插入符。 */
     val caretAtEnd: Boolean get() = caret >= expression.length

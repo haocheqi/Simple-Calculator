@@ -118,4 +118,24 @@ class InputEditingTest {
         assertTrue(CalculatorUiState(expression = "1+2", caret = 3).caretAtEnd)
         assertFalse(CalculatorUiState(expression = "1+2", caret = 1).caretAtEnd)
     }
+
+    @Test
+    fun `an integral result has no second form to toggle`() {
+        // 5 的分数形态还是 5，给出开关只会让人以为按钮坏了。
+        val state = CalculatorUiState(
+            expression = "2+3",
+            result = MathBlock.Number("5"),
+            exactResult = MathBlock.Number("5")
+        )
+        assertFalse(state.canToggleForm)
+    }
+
+    @Test
+    fun `a genuine fraction enables the toggle`() {
+        val state = CalculatorUiState(
+            result = MathBlock.Number("0.5"),
+            exactResult = MathBlock.Fraction(MathBlock.Number("1"), MathBlock.Number("2"))
+        )
+        assertTrue(state.canToggleForm)
+    }
 }

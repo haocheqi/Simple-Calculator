@@ -2,6 +2,7 @@ package com.hpcalc.core.math
 
 import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import java.math.BigInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -156,5 +157,21 @@ class RationalEvaluatorTest {
         val block = exact("1/3").toMathBlock() as MathBlock.Fraction
         assertEquals(MathBlock.Number("1"), block.numerator)
         assertEquals(MathBlock.Number("3"), block.denominator)
+    }
+
+    @Test
+    fun `exact powers that would explode are refused`() {
+        // 精确幂没有精度上限，嵌套幂可以要求几亿位数字。必须提前止损，
+        // 否则「先试一次精确计算」会在每次求值时把界面卡死。
+        val error = failure("(1000^10000)^10000")
+        assertTrue("expected ArgumentTooLarge, got $error", error is MathError.DomainError)
+        assertEquals(MathIssue.ArgumentTooLarge, (error as MathError.DomainError).issue)
+    }
+
+    @Test
+    fun `modest exact powers still work`() {
+        // 止损线不能低到影响正常使用。
+        assertEquals(BigInteger.valueOf(1024), exact("2^10").numerator)
+        assertEquals(302, exact("2^1000").numerator.toString().length)
     }
 }

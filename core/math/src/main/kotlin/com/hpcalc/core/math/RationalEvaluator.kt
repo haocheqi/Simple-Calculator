@@ -103,6 +103,16 @@ class RationalEvaluator {
                 throw ExactException(MathError.DomainError("exponent is too large for an exact result", MathIssue.ArgumentTooLarge))
             }
             val e = magnitude.toInt()
+            // 精确幂没有精度上限，`(1000^10000)^10000` 这种嵌套会要求几亿位数字。
+            // 指数一大就直接认输，让调用方退回 50 位小数——宁可少给一个精确形态，
+            // 也不能让界面在这里卡死。
+            if (estimatedDigits(numerator, e) > MAX_EXACT_DIGITS ||
+                estimatedDigits(denominator, e) > MAX_EXACT_DIGITS
+            ) {
+                throw ExactException(
+                    MathError.DomainError("exact power is too large to be useful", MathIssue.ArgumentTooLarge)
+                )
+            }
             val n = numerator.pow(e)
             val d = denominator.pow(e)
             return if (exponent.signum() < 0) {
@@ -112,6 +122,10 @@ class RationalEvaluator {
                 Fraction(n, d)
             }
         }
+
+        /** 估算 [base] 的 [e] 次方有多少位十进制数字，用来在真正开算之前止损。 */
+        private fun estimatedDigits(base: BigInteger, e: Int): Long =
+            base.abs().bitLength().toLong() * e * 3L / 10L + 1L
 
         val isInteger: Boolean get() = denominator == BigInteger.ONE
 
@@ -321,5 +335,8 @@ class RationalEvaluator {
         const val MAX_INPUT_LENGTH = 1000
         const val MAX_NESTING_DEPTH = 64
         val MAX_EXPONENT = BigInteger.valueOf(10_000)
+
+        /** 精确幂结果的位数上限：再大就退回小数，避免一次幂运算吃光内存。 */
+        const val MAX_EXACT_DIGITS = 2_000L
     }
 }
