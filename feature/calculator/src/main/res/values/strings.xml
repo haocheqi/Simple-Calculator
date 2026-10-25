@@ -52,7 +52,6 @@
     <string name="settings_precision">%1$d-digit internal precision, %2$d digits shown</string>
 
     <!-- 矩阵 -->
-    <string name="matrix_title">Matrix</string>
     <string name="matrix_rows">Rows</string>
     <string name="matrix_columns">Columns</string>
     <string name="matrix_dimension">%1$d × %2$d</string>
