@@ -35,7 +35,7 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 **发版闸门**——跑一遍打包校验（19 项，失败即非 0 退出）：
 
 ```powershell
-pwsh ./scripts/verify-release.ps1 -ExpectedVersion 3.0 -ExpectedVersionCode 7
+pwsh ./scripts/verify-release.ps1 -ExpectedVersion 3.0 -ExpectedVersionCode 9
 ```
 
 它检查的是「构建成功但包是坏的」这类人眼看 log 看不到的问题：包名与版本号、

@@ -1,7 +1,7 @@
 name: Android CI
 
-# 本地没有 gradle wrapper：工程一直用固定版本的本地发行版构建，
-# 这里用 setup-gradle 固定同一版本（8.10.2），保持两条路径行为一致。
+# wrapper 也在库里（gradlew + gradle/wrapper），这里仍用 setup-gradle 固定同一版本
+# （8.10.2）并吃它的依赖缓存，两条路径行为一致。
 on:
   push:
     branches: [main]
