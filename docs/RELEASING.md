@@ -32,7 +32,18 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 
 产物：`app/build/outputs/apk/release/app-release.apk`（R8 + 资源压缩 + 签名）。
 
-校验签名：
+**发版闸门**——跑一遍打包校验（19 项，失败即非 0 退出）：
+
+```powershell
+pwsh ./scripts/verify-release.ps1 -ExpectedVersion 3.0 -ExpectedVersionCode 5
+```
+
+它检查的是「构建成功但包是坏的」这类人眼看 log 看不到的问题：包名与版本号、
+签名证书是否仍是发布证书（**debug 证书也会通过签名校验**，所以单独查）、
+`isShrinkResources` 有没有把只在代码里按 id 引用的中文资源裁掉、自适应图标资源、
+manifest 里的 `Application`、以及体积是否合理。CI 在发布标签上跑同一个脚本。
+
+只查签名时也可以直接用：
 
 ```powershell
 ./android-sdk/build-tools/34.0.0/apksigner.bat verify --print-certs `

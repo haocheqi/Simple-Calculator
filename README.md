@@ -27,6 +27,8 @@ $env:GRADLE_USER_HOME = 'E:\code\calculate\.gradle-home'
 
 Debug APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`；release 走 `assembleRelease`（R8 + 签名），签名材料与发布步骤见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+发版前跑一遍打包闸门：pwsh ./scripts/verify-release.ps1 -ExpectedVersion <版本>——校验包名、版本号、发布证书、被资源压缩裁掉的中文文案、图标与 manifest 里的 Application。
+
 Android SDK 位于 `E:\code\calculate\android-sdk`，由 `local.properties` 的 `sdk.dir` 指定；其他机器需修改该文件。
 
 ## 工程结构

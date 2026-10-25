@@ -16,6 +16,7 @@
 - **历史置顶与数据库升级**：`history` 升到 v2，新增 `pinned` 列与真实的 `Migration(1, 2)`（没有用破坏性迁移），置顶条目永远排在最前。
 - **CI 与发布流程**：`.github/workflows/android.yml` 跑测试并产出 debug APK；推送 `v*` 标签时恢复签名材料、构建 release、用 `apksigner` 校验签名、附 SHA-256 发 Release。步骤见 `docs/RELEASING.md`。
 - **发布工程**：R8 代码压缩与资源压缩、签名配置（`keystore.properties`，不入库）、`proguard-rules.pro`。
+- **发布闸门**：`scripts/verify-release.ps1`（19 项）。本地与 CI 跑同一个脚本，检查包名、版本号、签名证书（能识破 debug 证书）、被 `isShrinkResources` 裁掉的文案、图标资源、manifest 里的 `Application` 与体积。
 
 ### 修复
 

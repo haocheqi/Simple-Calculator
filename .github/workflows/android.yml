@@ -97,11 +97,13 @@ jobs:
       - name: 构建 release APK
         run: gradle assembleRelease --console=plain
 
-      - name: 校验签名
+      - name: 校验打包结果
+        # 包名、versionName、签名证书（必须不是 debug 证书）、两种语言的资源是否被
+        # isShrinkResources 裁掉、图标资源、Application 是否注册、体积。
+        shell: pwsh
         run: |
-          set -euo pipefail
-          BUILD_TOOLS=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/* | sort -V | tail -1)
-          "$BUILD_TOOLS/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          ./scripts/verify-release.ps1 -ExpectedVersion $version
 
       - name: 生成 SHA-256 校验文件
         run: |
