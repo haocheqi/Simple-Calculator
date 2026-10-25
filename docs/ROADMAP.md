@@ -141,5 +141,5 @@
 ## 已知环境限制
 
 - **无真机、无模拟器、无系统镜像**。因此 `docs/ACCEPTANCE.md` 中依赖运行时的条目（进程存活、视觉残留、启动白闪、图标、数据库升级）无法在开发环境内验证，必须由人装到手机上执行。**阶段 3 因此尚未算通过。**
-- Room 的 `Migration(1, 2)` 只能靠「装过 v1 的设备升级」验证，本地无法跑 `MigrationTestHelper`。
+- Room 的 `Migration(1, 2)` 里那句 SQL 已经在 JVM 上用真实 SQLite 验证过（`HistoryMigrationTest`：老行存活、新列 `NOT NULL DEFAULT 0`、置顶排序正确），但 Room 的 identity-hash 校验与真实升级路径仍只能在装了 v1 数据库的设备上验证。
 - Gradle 构建必须显式指定 `GRADLE_USER_HOME` 与本地发行版，否则会尝试联网下载。

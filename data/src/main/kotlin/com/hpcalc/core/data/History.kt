@@ -52,6 +52,10 @@ interface HistoryDao {
     suspend fun setPinned(id: Long, pinned: Boolean)
 }
 
+/** v1 → v2 的列变更。抽成常量，好让单元测试执行**同一句** SQL，避免测试与实现漂移。 */
+internal const val ADD_PINNED_COLUMN =
+    "ALTER TABLE history ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"
+
 @Database(entities = [HistoryEntity::class], version = 2, exportSchema = false)
 abstract class CalculatorDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
@@ -66,7 +70,7 @@ abstract class CalculatorDatabase : RoomDatabase() {
          */
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE history ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(ADD_PINNED_COLUMN)
             }
         }
 

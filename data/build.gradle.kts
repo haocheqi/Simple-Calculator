@@ -25,4 +25,9 @@ dependencies {
     api(libs.bundles.room)
     api(libs.androidx.datastore)
     ksp(libs.androidx.room.compiler)
+
+    // 仅测试用：在 JVM 上跑真实的 SQLite，验证迁移 SQL 不会丢数据。
+    // Room 的 MigrationTestHelper 需要设备，本地环境没有。
+    testImplementation(libs.junit)
+    testImplementation("org.xerial:sqlite-jdbc:3.45.1.0")
 }
