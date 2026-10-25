@@ -4,6 +4,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +21,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +91,17 @@ fun CalculatorScreen(
                     .fillMaxWidth()
                     .weight(1f)
             )
+            if (state.showsSubstitutionStrip) {
+                Spacer(Modifier.height(CalcTokens.SectionSpacing))
+                SubstitutionStrip(
+                    variable = state.substituteVariable,
+                    value = state.substituteValue,
+                    enabled = state.canSubstitute,
+                    onVariableChange = { onEvent(CalculatorUiEvent.SetSubstituteVariable(it)) },
+                    onValueChange = { onEvent(CalculatorUiEvent.SetSubstituteValue(it)) },
+                    onSubstitute = { onEvent(CalculatorUiEvent.Substitute) }
+                )
+            }
             if (state.showsFunctionStrip) {
                 Spacer(Modifier.height(CalcTokens.SectionSpacing))
                 FunctionStrip(
@@ -192,6 +206,59 @@ private fun DisplayArea(state: CalculatorUiState, modifier: Modifier = Modifier)
             ) {
                 MathBlockView(block = state.result, style = rememberMathTextStyle(34.sp))
             }
+        }
+    }
+}
+
+/**
+ * 符号模式的代入条：`变量 = 数值` 加一个「代入」。
+ *
+ * 两个输入都只是文本，代入值允许写表达式（`π/2`、`1+1`）；
+ * 变量名校验与表达式解析都在 [com.hpcalc.core.math.CalculatorEngine.substitute] 里做，
+ * 界面不猜语法、也不预先拦截——错误由引擎回一个 `MathBlock.Error` 显示在结果区。
+ */
+@Composable
+private fun SubstitutionStrip(
+    variable: String,
+    value: String,
+    enabled: Boolean,
+    onVariableChange: (String) -> Unit,
+    onValueChange: (String) -> Unit,
+    onSubstitute: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CalcTokens.KeyGap)
+    ) {
+        OutlinedTextField(
+            value = variable,
+            onValueChange = onVariableChange,
+            modifier = Modifier.width(92.dp),
+            singleLine = true,
+            label = { Text(stringResource(R.string.substitute_variable)) },
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = "=",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+            label = { Text(stringResource(R.string.substitute_value)) },
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
+        Button(
+            onClick = onSubstitute,
+            enabled = enabled,
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+        ) {
+            Text(stringResource(R.string.substitute_action))
         }
     }
 }

@@ -7,6 +7,7 @@ import com.hpcalc.core.model.EvaluationResult
 import com.hpcalc.core.model.MathError
 import com.hpcalc.core.model.NumericEvaluator
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext
 import java.math.RoundingMode
 
@@ -99,7 +100,7 @@ class HighPrecisionEvaluator : NumericEvaluator {
                 }
 
                 else -> when (c) {
-                    '+', '-', '*', '/', '^', '%', '!' -> { out += Token.Op(c); i++ }
+                    '+', '-', '*', '/', '^', '%', '!', ',' -> { out += Token.Op(c); i++ }
                     '(' -> { out += Token.Left; i++ }
                     ')' -> { out += Token.Right; i++ }
                     else -> fail(MathError.ParseError("unsupported character '$c'"))
@@ -207,9 +208,21 @@ class HighPrecisionEvaluator : NumericEvaluator {
             is Token.Name -> {
                 if (peek() is Token.Left) {
                     take()
-                    val arg = parseExpression()
+                    val args = mutableListOf<BigDecimal>()
+                    if (peek() !is Token.Right) {
+                        args += parseExpression()
+                        while (true) {
+                            val separator = peek()
+                            if (separator is Token.Op && separator.value == ',') {
+                                take()
+                                args += parseExpression()
+                            } else {
+                                break
+                            }
+                        }
+                    }
                     if (take() !is Token.Right) fail(MathError.ParseError("missing ')' after '${t.value}'"))
-                    function(t.value, arg)
+                    function(t.value, args)
                 } else {
                     when (t.value.lowercase()) {
                         "pi", "π" -> BigDecimalMath.pi(mc)
@@ -257,49 +270,236 @@ class HighPrecisionEvaluator : NumericEvaluator {
         return result
     }
 
-    private fun function(name: String, x: BigDecimal): BigDecimal {
+    /**
+     * 函数分派。
+     *
+     * 参数个数错误的报 `ParseError`（语法层面就不成立），
+     * 参数越界的报 `DomainError`（语法成立但数学上不允许），两者在界面上文案不同。
+     */
+    private fun function(name: String, args: List<BigDecimal>): BigDecimal {
         val n = name.lowercase()
         return when (n) {
-            "sin" -> BigDecimalMath.sin(toRadians(x), mc)
-            "cos" -> BigDecimalMath.cos(toRadians(x), mc)
-            "tan" -> BigDecimalMath.tan(toRadians(x), mc)
+            // ---------------------------------------------------------- 三角
+            "sin" -> BigDecimalMath.sin(toRadians(unary(n, args)), mc)
+            "cos" -> BigDecimalMath.cos(toRadians(unary(n, args)), mc)
+            "tan" -> BigDecimalMath.tan(toRadians(unary(n, args)), mc)
 
             // 反三角：入参是无量纲比值，结果必须按当前角度单位还原。
             "asin" -> {
-                requireUnitInterval(x, name)
+                val x = unary(n, args)
+                requireUnitInterval(x, n)
                 fromRadians(BigDecimalMath.asin(x, mc))
             }
             "acos" -> {
-                requireUnitInterval(x, name)
+                val x = unary(n, args)
+                requireUnitInterval(x, n)
                 fromRadians(BigDecimalMath.acos(x, mc))
             }
-            "atan" -> fromRadians(BigDecimalMath.atan(x, mc))
+            "atan" -> fromRadians(BigDecimalMath.atan(unary(n, args), mc))
+            "atan2" -> {
+                val (y, x) = binary(n, args)
+                fromRadians(atan2Radians(y, x))
+            }
 
             // 双曲函数不涉及角度换算。
-            "sinh" -> BigDecimalMath.sinh(x, mc)
-            "cosh" -> BigDecimalMath.cosh(x, mc)
-            "tanh" -> BigDecimalMath.tanh(x, mc)
+            "sinh" -> BigDecimalMath.sinh(unary(n, args), mc)
+            "cosh" -> BigDecimalMath.cosh(unary(n, args), mc)
+            "tanh" -> BigDecimalMath.tanh(unary(n, args), mc)
 
+            // ---------------------------------------------------------- 对数与指数
             "ln" -> {
-                requirePositive(x, name)
+                val x = unary(n, args)
+                requirePositive(x, n)
                 BigDecimalMath.log(x, mc)
             }
             "log", "log10" -> {
-                requirePositive(x, name)
+                val x = unary(n, args)
+                requirePositive(x, n)
                 BigDecimalMath.log10(x, mc)
             }
-            "exp" -> BigDecimalMath.exp(x, mc)
-            "abs" -> x.abs(mc)
+            "logb" -> {
+                val (base, x) = binary(n, args)
+                requirePositive(base, n)
+                requirePositive(x, n)
+                if (base.compareTo(BigDecimal.ONE) == 0) {
+                    fail(MathError.DomainError("logarithm base must not be 1"))
+                }
+                BigDecimalMath.log(x, mc).divide(BigDecimalMath.log(base, mc), mc)
+            }
+            "exp" -> BigDecimalMath.exp(unary(n, args), mc)
+
+            // ---------------------------------------------------------- 幂与根
             "sqrt" -> {
+                val x = unary(n, args)
                 if (x.signum() < 0) fail(MathError.Undefined("square root of a negative number"))
                 BigDecimalMath.sqrt(x, mc)
             }
-            "floor" -> x.setScale(0, RoundingMode.FLOOR)
-            "ceil" -> x.setScale(0, RoundingMode.CEILING)
-            "round" -> x.setScale(0, RoundingMode.HALF_UP)
+            "cbrt" -> nthRoot(unary(n, args), 3, n)
+            "root" -> {
+                val (x, degree) = binary(n, args)
+                nthRoot(x, requireCount(degree, n, positive = true), n)
+            }
+
+            // ---------------------------------------------------------- 舍入
+            "abs" -> unary(n, args).abs(mc)
+            "floor" -> unary(n, args).setScale(0, RoundingMode.FLOOR)
+            "ceil" -> unary(n, args).setScale(0, RoundingMode.CEILING)
+            "round" -> unary(n, args).setScale(0, RoundingMode.HALF_UP)
+
+            // ---------------------------------------------------------- 极值
+            "min" -> variadic(n, args).minOrNull() ?: fail(MathError.ParseError("min expects at least 1 argument"))
+            "max" -> variadic(n, args).maxOrNull() ?: fail(MathError.ParseError("max expects at least 1 argument"))
+            "clamp" -> {
+                if (args.size != 3) fail(MathError.ParseError("clamp expects exactly 3 arguments"))
+                val (x, low, high) = args
+                if (low > high) fail(MathError.DomainError("clamp lower bound exceeds upper bound"))
+                x.coerceIn(low, high)
+            }
+
+            // ---------------------------------------------------------- 数论
+            "gcd" -> {
+                val (a, b) = binary(n, args)
+                requireInteger(a, n)
+                requireInteger(b, n)
+                BigDecimal(a.toBigInteger().gcd(b.toBigInteger()))
+            }
+            "lcm" -> {
+                val (a, b) = binary(n, args)
+                requireInteger(a, n)
+                requireInteger(b, n)
+                if (a.signum() == 0 || b.signum() == 0) {
+                    BigDecimal.ZERO
+                } else {
+                    val left = a.toBigInteger().abs()
+                    val right = b.toBigInteger().abs()
+                    BigDecimal(left.divide(left.gcd(right)).multiply(right))
+                }
+            }
+            "comb" -> {
+                val (total, chosen) = binary(n, args)
+                binomial(requireCount(total, n), requireCount(chosen, n))
+            }
+            "perm" -> {
+                val (total, chosen) = binary(n, args)
+                permutations(requireCount(total, n), requireCount(chosen, n))
+            }
+
+            // ---------------------------------------------------------- 统计
+            "sum" -> variadic(n, args).fold(BigDecimal.ZERO) { acc, value -> acc.add(value, mc) }
+            "mean", "average" -> {
+                val values = variadic(n, args)
+                values.fold(BigDecimal.ZERO) { acc, value -> acc.add(value, mc) }
+                    .divide(BigDecimal(values.size), mc)
+            }
+            "median" -> {
+                val sorted = variadic(n, args).sorted()
+                val middle = sorted.size / 2
+                if (sorted.size % 2 == 1) {
+                    sorted[middle]
+                } else {
+                    sorted[middle - 1].add(sorted[middle], mc).divide(BigDecimal(2), mc)
+                }
+            }
+            "stdev" -> {
+                val values = variadic(n, args)
+                if (values.size < 2) fail(MathError.DomainError("stdev needs at least 2 values"))
+                val average = values.fold(BigDecimal.ZERO) { acc, v -> acc.add(v, mc) }
+                    .divide(BigDecimal(values.size), mc)
+                val squares = values.fold(BigDecimal.ZERO) { acc, v ->
+                    val deviation = v.subtract(average, mc)
+                    acc.add(deviation.multiply(deviation, mc), mc)
+                }
+                BigDecimalMath.sqrt(squares.divide(BigDecimal(values.size - 1), mc), mc)
+            }
+
+            // ---------------------------------------------------------- 角度换算
+            // deg/rad 与当前角度单位无关：把弧度当量换成角度、把角度当量换成弧度。
+            "deg" -> unary(n, args).multiply(BigDecimal(180), mc).divide(BigDecimalMath.pi(mc), mc)
+            "rad" -> unary(n, args).multiply(BigDecimalMath.pi(mc), mc).divide(BigDecimal(180), mc)
+
             else -> fail(MathError.ParseError("unknown function '$name'"))
         }
     }
+
+    private fun unary(name: String, args: List<BigDecimal>): BigDecimal {
+        if (args.size != 1) fail(MathError.ParseError("$name expects exactly 1 argument"))
+        return args[0]
+    }
+
+    private fun binary(name: String, args: List<BigDecimal>): Pair<BigDecimal, BigDecimal> {
+        if (args.size != 2) fail(MathError.ParseError("$name expects exactly 2 arguments"))
+        return args[0] to args[1]
+    }
+
+    private fun variadic(name: String, args: List<BigDecimal>): List<BigDecimal> {
+        if (args.isEmpty()) fail(MathError.ParseError("$name expects at least 1 argument"))
+        return args
+    }
+
+    private fun requireInteger(value: BigDecimal, name: String) {
+        if (value.stripTrailingZeros().scale() > 0) fail(MathError.DomainError("$name expects integers"))
+    }
+
+    /** 把参数收成一个小整数，超过上限直接拒绝，避免用巨大参数把 UI 卡死。 */
+    private fun requireCount(value: BigDecimal, name: String, positive: Boolean = false): Int {
+        requireInteger(value, name)
+        if (positive && value.signum() <= 0) fail(MathError.DomainError("$name expects a positive integer"))
+        if (!positive && value.signum() < 0) fail(MathError.DomainError("$name expects a non-negative integer"))
+        if (value > BigDecimal(MAX_COUNT_ARGUMENT)) {
+            fail(MathError.DomainError("$name argument is too large"))
+        }
+        return value.toInt()
+    }
+
+    private fun atan2Radians(y: BigDecimal, x: BigDecimal): BigDecimal {
+        val pi = BigDecimalMath.pi(mc)
+        val halfPi = pi.divide(BigDecimal(2), mc)
+        val ratio = if (x.signum() == 0) BigDecimal.ZERO else y.divide(x, mc)
+        return when {
+            x.signum() > 0 -> BigDecimalMath.atan(ratio, mc)
+            x.signum() < 0 && y.signum() >= 0 -> BigDecimalMath.atan(ratio, mc).add(pi, mc)
+            x.signum() < 0 && y.signum() < 0 -> BigDecimalMath.atan(ratio, mc).subtract(pi, mc)
+            y.signum() > 0 -> halfPi
+            y.signum() < 0 -> halfPi.negate()
+            else -> fail(MathError.DomainError("atan2(0, 0) is undefined"))
+        }
+    }
+
+    private fun nthRoot(x: BigDecimal, degree: Int, name: String): BigDecimal {
+        if (degree <= 0) fail(MathError.DomainError("$name expects a positive degree"))
+        if (x.signum() == 0) return BigDecimal.ZERO
+        if (x.signum() < 0) {
+            if (degree % 2 == 0) fail(MathError.Undefined("even root of a negative number"))
+            return nthRoot(x.negate(), degree, name).negate()
+        }
+        return when (degree) {
+            1 -> x
+            2 -> BigDecimalMath.sqrt(x, mc)
+            else -> BigDecimalMath.pow(x, BigDecimal.ONE.divide(BigDecimal(degree), mc), mc)
+        }
+    }
+
+    /** 二项式系数，用 BigInteger 走整步除法，保证零误差。 */
+    private fun binomial(total: Int, chosen: Int): BigDecimal {
+        if (chosen < 0 || chosen > total) return BigDecimal.ZERO
+        var result = BigInteger.ONE
+        for (i in 1..chosen) {
+            result = result.multiply(BigInteger.valueOf((total - chosen + i).toLong()))
+            result = result.divide(BigInteger.valueOf(i.toLong()))
+        }
+        return BigDecimal(result)
+    }
+
+    private fun permutations(total: Int, chosen: Int): BigDecimal {
+        if (chosen < 0 || chosen > total) return BigDecimal.ZERO
+        var result = BigInteger.ONE
+        for (i in 0 until chosen) {
+            result = result.multiply(BigInteger.valueOf((total - i).toLong()))
+        }
+        return BigDecimal(result)
+    }
+
+    private val MAX_COUNT_ARGUMENT = 10_000
 
     // ---------------------------------------------------------------- 角度换算
 

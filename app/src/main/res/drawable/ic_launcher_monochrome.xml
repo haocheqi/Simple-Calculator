@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 单色层：evenOdd 让屏幕与按键成为镂空，系统再按主题着色 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M42,30 L66,30 Q72,30 72,36 L72,72 Q72,78 66,78 L42,78 Q36,78 36,72 L36,36 Q36,30 42,30Z M41,36 L67,36 L67,48 L41,48Z M41,53 L49,53 L49,61 L41,61Z M53,53 L61,53 L61,61 L53,61Z M41,65 L49,65 L49,73 L41,73Z M53,65 L61,65 L61,73 L53,73Z" />
+</vector>

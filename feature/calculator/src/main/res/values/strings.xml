@@ -43,6 +43,7 @@
     <string name="settings_display">Display format</string>
     <string name="display_decimal">Decimal</string>
     <string name="display_engineering">Engineering</string>
+    <string name="display_exact_fraction">Exact fraction</string>
 
     <string name="settings_about">About</string>
     <string name="settings_version">Version %1$s</string>
@@ -63,5 +64,10 @@
     <string name="matrix_op_inverse">A⁻¹</string>
     <string name="matrix_op_transpose">Aᵀ</string>
     <string name="matrix_op_rank">rank A</string>
+
+    <!-- 符号模式：代入求值 -->
+    <string name="substitute_variable">Variable</string>
+    <string name="substitute_value">Value</string>
+    <string name="substitute_action">Substitute</string>
 
 </resources>

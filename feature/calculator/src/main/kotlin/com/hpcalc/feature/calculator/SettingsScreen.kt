@@ -133,4 +133,5 @@ private fun AngleUnit.labelRes(): Int = when (this) {
 private fun DisplayMode.labelRes(): Int = when (this) {
     DisplayMode.DECIMAL -> R.string.display_decimal
     DisplayMode.ENGINEERING -> R.string.display_engineering
+    DisplayMode.EXACT_FRACTION -> R.string.display_exact_fraction
 }

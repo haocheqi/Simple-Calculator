@@ -21,7 +21,8 @@ import java.math.BigDecimal
 class CalculatorEngine(
     private val numeric: HighPrecisionEvaluator = HighPrecisionEvaluator(),
     private val symbolic: PolynomialCalculator = PolynomialCalculator(),
-    private val matrix: MatrixCalculator = MatrixCalculator()
+    private val matrix: MatrixCalculator = MatrixCalculator(),
+    private val rational: RationalEvaluator = RationalEvaluator()
 ) {
 
     /** 一次求值的结果。[value] 非空表示这次结果应当成为下一次的 `ans`。 */
@@ -42,13 +43,29 @@ class CalculatorEngine(
             return Outcome(MathBlock.Text(""), succeeded = false)
         }
         return when (mode) {
-            CalculatorMode.BASIC, CalculatorMode.SCIENTIFIC -> when (val result = numeric.evaluate(trimmed, context)) {
-                is EvaluationResult.Success -> Outcome(
-                    block = result.value.toMathBlock(displayMode),
-                    succeeded = true,
-                    value = result.value
-                )
-                is EvaluationResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
+            CalculatorMode.BASIC, CalculatorMode.SCIENTIFIC -> {
+                if (displayMode == DisplayMode.EXACT_FRACTION) {
+                    when (val exact = rational.evaluate(trimmed)) {
+                        is RationalResult.Exact -> return Outcome(
+                            block = exact.toMathBlock(),
+                            succeeded = true,
+                            value = exact.toBigDecimal()
+                        )
+                        // 只有「这一步无法精确」才回退小数；
+                        // 真正的错误（除以零、括号不配对）必须如实报出来。
+                        is RationalResult.Error -> if (exact.error !is MathError.Unsupported) {
+                            return Outcome(MathBlock.Error(exact.error), succeeded = false)
+                        }
+                    }
+                }
+                when (val result = numeric.evaluate(trimmed, context)) {
+                    is EvaluationResult.Success -> Outcome(
+                        block = result.value.toMathBlock(displayMode),
+                        succeeded = true,
+                        value = result.value
+                    )
+                    is EvaluationResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
+                }
             }
 
             CalculatorMode.SYMBOLIC -> {
@@ -79,4 +96,58 @@ class CalculatorEngine(
             is MatrixResult.Text -> Outcome(MathBlock.Text(result.value), succeeded = true)
             is MatrixResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
         }
+
+    /**
+     * 符号模式的代入求值。
+     *
+     * 代入值本身也交给数值求值器，所以 `π/2`、`1+1`、`2^10` 都能直接填，
+     * 不必让用户先自己算出一个小数——这是相对 v2.0 的改进（v2.0 只收字面量）。
+     *
+     * 表达式里若有别的变量（`x+y` 只给 `x`），`PolynomialCalculator` 会报
+     * `DomainError("missing value for 'y'")`，界面上直接显示出来。
+     */
+    fun substitute(
+        expression: String,
+        variable: String,
+        value: String,
+        context: EvaluationContext,
+        displayMode: DisplayMode
+    ): Outcome {
+        val trimmed = expression.trim()
+        if (trimmed.isEmpty()) return Outcome(MathBlock.Text(""), succeeded = false)
+
+        val name = variable.trim()
+        if (!VARIABLE_NAME.matches(name)) {
+            val detail = if (name.isEmpty()) "variable name is empty" else "invalid variable name '$name'"
+            return Outcome(MathBlock.Error(MathError.ParseError(detail)), succeeded = false)
+        }
+
+        val valueExpression = value.trim()
+        if (valueExpression.isEmpty()) {
+            return Outcome(
+                MathBlock.Error(MathError.ParseError("missing value for '$name'")),
+                succeeded = false
+            )
+        }
+
+        val assigned = when (val evaluated = numeric.evaluate(valueExpression, context)) {
+            is EvaluationResult.Success -> evaluated.value
+            is EvaluationResult.Error -> return Outcome(MathBlock.Error(evaluated.error), succeeded = false)
+        }
+
+        return when (val result = symbolic.substitute(trimmed, mapOf(name to assigned))) {
+            is SymbolicResult.Success -> {
+                val numericResult = result.expression.toBigDecimalOrNull()
+                Outcome(
+                    block = numericResult?.toMathBlock(displayMode) ?: MathBlock.Text(result.expression),
+                    succeeded = true,
+                    value = numericResult
+                )
+            }
+            is SymbolicResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
+        }
+    }
 }
+
+/** 多项式求值器的变量名规则：字母开头，后接字母或数字。 */
+private val VARIABLE_NAME = Regex("[\\p{L}][\\p{L}\\p{N}]*")

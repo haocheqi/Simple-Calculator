@@ -38,6 +38,7 @@
     <string name="settings_display">显示格式</string>
     <string name="display_decimal">小数</string>
     <string name="display_engineering">工程记数</string>
+    <string name="display_exact_fraction">精确分数</string>
 
     <string name="settings_about">关于</string>
     <string name="settings_version">版本 %1$s</string>
@@ -57,5 +58,10 @@
     <string name="matrix_op_inverse">A⁻¹</string>
     <string name="matrix_op_transpose">Aᵀ</string>
     <string name="matrix_op_rank">rank A</string>
+
+    <!-- 符号模式：代入求值 -->
+    <string name="substitute_variable">变量</string>
+    <string name="substitute_value">数值</string>
+    <string name="substitute_action">代入</string>
 
 </resources>

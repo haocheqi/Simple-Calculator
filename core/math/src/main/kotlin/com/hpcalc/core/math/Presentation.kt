@@ -33,6 +33,10 @@ fun BigDecimal.toDisplayString(mode: DisplayMode, significantDigits: Int = 16): 
                 rounded.toEngineeringNotation()
             else -> rounded.toPlainString()
         }
+
+        // 精确分数由 RationalEvaluator 生成 MathBlock.Fraction，不经过这里；
+        // 万一被调用（例如矩阵标量结果），按小数呈现，不伪造分数。
+        DisplayMode.EXACT_FRACTION -> formatResult(this, significantDigits)
     }
 }
 

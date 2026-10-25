@@ -101,6 +101,16 @@ class CalculatorViewModel(
             }
 
             CalculatorUiEvent.EvaluateMatrix -> evaluateMatrix()
+
+            is CalculatorUiEvent.SetSubstituteVariable -> mutate {
+                it.copy(substituteVariable = event.name.take(MAX_VARIABLE_NAME))
+            }
+
+            is CalculatorUiEvent.SetSubstituteValue -> mutate {
+                it.copy(substituteValue = event.value.take(MAX_SUBSTITUTE_VALUE))
+            }
+
+            CalculatorUiEvent.Substitute -> substitute()
         }
     }
 
@@ -123,6 +133,35 @@ class CalculatorViewModel(
                     HistoryEntity(
                         mode = snapshot.mode.name,
                         expression = snapshot.expression,
+                        result = outcome.block.plainText()
+                    )
+                )
+            }
+        }
+    }
+
+    /** 符号模式的代入求值：结果同样进历史、同样刷新 ans。 */
+    private fun substitute() {
+        val snapshot = local.value
+        if (!snapshot.canSubstitute) return
+        viewModelScope.launch {
+            val angleUnit = settingsRepository.settings.firstOrNull()?.angle ?: AngleUnit.RADIANS
+            val outcome = withContext(Dispatchers.Default) {
+                engine.substitute(
+                    expression = snapshot.expression,
+                    variable = snapshot.substituteVariable,
+                    value = snapshot.substituteValue,
+                    context = EvaluationContext(angleUnit = angleUnit, ans = snapshot.ans),
+                    displayMode = snapshot.displayMode
+                )
+            }
+            mutate { it.copy(result = outcome.block, ans = outcome.value ?: it.ans) }
+            if (outcome.succeeded) {
+                history.insert(
+                    HistoryEntity(
+                        mode = snapshot.mode.name,
+                        expression = "${snapshot.expression} [${snapshot.substituteVariable}" +
+                            "=${snapshot.substituteValue}]",
                         result = outcome.block.plainText()
                     )
                 )
@@ -162,6 +201,8 @@ class CalculatorViewModel(
         savedStateHandle[KEY_MATRIX_OPERATION] = next.matrix.operation.name
         savedStateHandle[KEY_MATRIX_LEFT] = next.matrix.left.flatten().joinToString(CELL_SEPARATOR)
         savedStateHandle[KEY_MATRIX_RIGHT] = next.matrix.right.flatten().joinToString(CELL_SEPARATOR)
+        savedStateHandle[KEY_SUBSTITUTE_VARIABLE] = next.substituteVariable
+        savedStateHandle[KEY_SUBSTITUTE_VALUE] = next.substituteValue
     }
 
     private fun restore(): CalculatorUiState {
@@ -177,6 +218,8 @@ class CalculatorViewModel(
                 ?: CalculatorMode.BASIC,
             expression = savedStateHandle.get<String>(KEY_EXPRESSION) ?: "",
             ans = savedStateHandle.get<String>(KEY_ANS)?.toBigDecimalOrNull(),
+            substituteVariable = savedStateHandle.get<String>(KEY_SUBSTITUTE_VARIABLE) ?: "x",
+            substituteValue = savedStateHandle.get<String>(KEY_SUBSTITUTE_VALUE) ?: "",
             matrix = MatrixUiState(
                 size = size,
                 left = left,
@@ -196,11 +239,15 @@ class CalculatorViewModel(
         const val MAX_EXPRESSION = 512
         const val MIN_MATRIX_SIZE = 2
         const val MAX_MATRIX_SIZE = 6
+        const val MAX_VARIABLE_NAME = 16
+        const val MAX_SUBSTITUTE_VALUE = 128
 
         private const val CELL_SEPARATOR = "|"
         private const val KEY_EXPRESSION = "expression"
         private const val KEY_MODE = "mode"
         private const val KEY_ANS = "ans"
+        private const val KEY_SUBSTITUTE_VARIABLE = "substituteVariable"
+        private const val KEY_SUBSTITUTE_VALUE = "substituteValue"
         private const val KEY_MATRIX_SIZE = "matrixSize"
         private const val KEY_MATRIX_OPERATION = "matrixOperation"
         private const val KEY_MATRIX_LEFT = "matrixLeft"

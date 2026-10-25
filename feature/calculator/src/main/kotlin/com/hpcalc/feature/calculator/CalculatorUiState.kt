@@ -45,10 +45,22 @@ data class CalculatorUiState(
     val ans: BigDecimal? = null,
     val history: List<HistoryEntity> = emptyList(),
     val settings: Settings = Settings(),
-    val matrix: MatrixUiState = MatrixUiState()
+    val matrix: MatrixUiState = MatrixUiState(),
+    /** 符号模式代入求值用的变量名，默认 `x`。 */
+    val substituteVariable: String = "x",
+    /** 代入值，允许填写表达式（`π/2`）。 */
+    val substituteValue: String = ""
 ) {
     val showsKeypad: Boolean get() = mode != CalculatorMode.MATRIX
 
     val showsFunctionStrip: Boolean
         get() = mode == CalculatorMode.SCIENTIFIC || mode == CalculatorMode.SYMBOLIC
+
+    /** 代入条只属于符号模式；其他模式没有变量可言。 */
+    val showsSubstitutionStrip: Boolean get() = mode == CalculatorMode.SYMBOLIC
+
+    val canSubstitute: Boolean
+        get() = expression.isNotBlank() &&
+            substituteVariable.isNotBlank() &&
+            substituteValue.isNotBlank()
 }

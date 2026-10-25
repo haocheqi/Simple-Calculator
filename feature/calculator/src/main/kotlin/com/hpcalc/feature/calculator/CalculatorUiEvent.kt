@@ -44,6 +44,15 @@ sealed interface CalculatorUiEvent {
     data class SetMatrixOperation(val operation: MatrixOperationKind) : CalculatorUiEvent
 
     data object EvaluateMatrix : CalculatorUiEvent
+
+    /** 符号模式：修改代入用的变量名。 */
+    data class SetSubstituteVariable(val name: String) : CalculatorUiEvent
+
+    /** 符号模式：修改代入值，允许是表达式。 */
+    data class SetSubstituteValue(val value: String) : CalculatorUiEvent
+
+    /** 符号模式：把当前表达式中的变量替换成给定值并求结果。 */
+    data object Substitute : CalculatorUiEvent
 }
 
 enum class MatrixSide { LEFT, RIGHT }

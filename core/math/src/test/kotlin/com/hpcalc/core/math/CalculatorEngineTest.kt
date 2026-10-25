@@ -141,4 +141,83 @@ class CalculatorEngineTest {
         assertEquals("12345678.9", number(decimal.block))
         assertTrue(number(engineering.block).contains("E"))
     }
+
+    @Test
+    fun `exact fraction mode renders a fraction block`() {
+        val outcome = engine.evaluate(CalculatorMode.BASIC, "1/3", context, DisplayMode.EXACT_FRACTION)
+        assertTrue(outcome.succeeded)
+        val block = outcome.block as MathBlock.Fraction
+        assertEquals(MathBlock.Number("1"), block.numerator)
+        assertEquals(MathBlock.Number("3"), block.denominator)
+    }
+
+    @Test
+    fun `exact fraction mode collapses whole numbers`() {
+        val outcome = engine.evaluate(CalculatorMode.BASIC, "4/2", context, DisplayMode.EXACT_FRACTION)
+        assertEquals(MathBlock.Number("2"), outcome.block)
+        assertEquals(BigDecimal(2), outcome.value)
+    }
+
+    @Test
+    fun `exact fraction mode falls back for irrational results`() {
+        val outcome = engine.evaluate(CalculatorMode.BASIC, "sin(1)", context, DisplayMode.EXACT_FRACTION)
+        assertTrue(outcome.succeeded)
+        assertTrue(outcome.block is MathBlock.Number)
+    }
+
+    @Test
+    fun `exact fraction mode still reports real errors`() {
+        val outcome = engine.evaluate(CalculatorMode.BASIC, "1/0", context, DisplayMode.EXACT_FRACTION)
+        assertFalse(outcome.succeeded)
+        assertEquals(MathError.DivisionByZero, (outcome.block as MathBlock.Error).error)
+    }
+
+    @Test
+    fun `substitution evaluates a polynomial at a value`() {
+        val outcome = engine.substitute("(x+1)^2+x", "x", "2", context, DisplayMode.DECIMAL)
+        assertTrue(outcome.succeeded)
+        assertEquals("11", number(outcome.block))
+        assertEquals(BigDecimal(11), outcome.value)
+    }
+
+    @Test
+    fun `substitution accepts an expression as the value`() {
+        val outcome = engine.substitute("x^2", "x", "3+1", context, DisplayMode.DECIMAL)
+        assertEquals("16", number(outcome.block))
+    }
+
+    @Test
+    fun `substitution honours the angle unit of the value`() {
+        val degrees = EvaluationContext(angleUnit = com.hpcalc.core.model.AngleUnit.DEGREES)
+        val outcome = engine.substitute("x", "x", "sin(30)", degrees, DisplayMode.DECIMAL)
+        assertEquals("0.5", number(outcome.block))
+    }
+
+    @Test
+    fun `substitution reports a variable without a value`() {
+        val outcome = engine.substitute("x+y", "x", "1", context, DisplayMode.DECIMAL)
+        assertFalse(outcome.succeeded)
+        assertTrue((outcome.block as MathBlock.Error).error is MathError.DomainError)
+    }
+
+    @Test
+    fun `substitution rejects an invalid variable name`() {
+        val outcome = engine.substitute("x", "1x", "2", context, DisplayMode.DECIMAL)
+        assertFalse(outcome.succeeded)
+        assertTrue((outcome.block as MathBlock.Error).error is MathError.ParseError)
+    }
+
+    @Test
+    fun `substitution requires a value`() {
+        val outcome = engine.substitute("x+1", "x", "   ", context, DisplayMode.DECIMAL)
+        assertFalse(outcome.succeeded)
+        assertTrue((outcome.block as MathBlock.Error).error is MathError.ParseError)
+    }
+
+    @Test
+    fun `substitution of a blank expression yields nothing`() {
+        val outcome = engine.substitute("  ", "x", "1", context, DisplayMode.DECIMAL)
+        assertFalse(outcome.succeeded)
+        assertNull(outcome.value)
+    }
 }

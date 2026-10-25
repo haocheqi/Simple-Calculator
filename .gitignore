@@ -13,6 +13,11 @@ local.properties
 
 # 构建产物
 *.apk
+*.aab
+
+# 签名材料（绝不入库）
+keystore.properties
+keystore/
 
 # 临时文件与构建日志
 *.log
