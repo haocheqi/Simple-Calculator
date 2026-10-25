@@ -1,5 +1,6 @@
 package com.hpcalc.core.math
 
+import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.MathError
 import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.Matrix
@@ -7,6 +8,7 @@ import com.hpcalc.core.model.MatrixEvaluator
 import com.hpcalc.core.model.MatrixOperation
 import com.hpcalc.core.model.MatrixResult
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext
 import java.math.RoundingMode
 
@@ -129,8 +131,70 @@ class MatrixCalculator(
             }
         }
         return MatrixResult.Success(
-            Matrix((0 until n).map { r -> (0 until n).map { c -> augmented[r][c + n] } })
+            Matrix((0 until n).map { r -> (0 until n).map { c -> augmented[r][c + n] } }),
+            exact = exactInverseBlock(matrix)
         )
+    }
+
+    /**
+     * 精确逆：用有理数（[Frac]）而不是 `BigDecimal` 做高斯-约当消元。
+     *
+     * 整数矩阵的逆几乎总是分数，`1/3` 用 50 位小数写成 `0.3333…` 既不准也难读；
+     * 真分式才是这个工具该给的结果。
+     *
+     * 返回 null 的两种情况：数值上已判定奇异（交给小数路径报错），或分数膨胀到没有可读性
+     * （输入小数位数太深时，分母会长到几百位）。
+     */
+    private fun exactInverseBlock(matrix: Matrix): MathBlock? {
+        val n = matrix.rowCount
+        if (n == 0) return null
+        for (r in 0 until n) {
+            for (c in 0 until n) {
+                val scale = matrix.rows[r][c].stripTrailingZeros().scale()
+                if (scale > MAX_EXACT_SCALE) return null
+            }
+        }
+
+        val a = MutableList(n) { r ->
+            MutableList(2 * n) { c ->
+                when {
+                    c < n -> Frac.of(matrix.rows[r][c])
+                    c - n == r -> Frac.ONE
+                    else -> Frac.ZERO
+                }
+            }
+        }
+
+        for (i in 0 until n) {
+            var pivot = i
+            while (pivot < n && a[pivot][i].isZero) pivot++
+            if (pivot >= n) return null
+            if (pivot != i) {
+                val swap = a[i]
+                a[i] = a[pivot]
+                a[pivot] = swap
+            }
+            val divisor = a[i][i]
+            for (c in 0 until 2 * n) a[i][c] = a[i][c] / divisor
+            for (r in 0 until n) {
+                if (r == i) continue
+                val factor = a[r][i]
+                if (factor.isZero) continue
+                for (c in 0 until 2 * n) a[r][c] = a[r][c] - factor * a[i][c]
+            }
+        }
+
+        val rows = ArrayList<List<MathBlock>>(n)
+        for (r in 0 until n) {
+            val cells = ArrayList<MathBlock>(n)
+            for (c in 0 until n) {
+                val cell = a[r][c + n]
+                if (cell.digits > MAX_EXACT_DIGITS) return null
+                cells.add(cell.toBlock())
+            }
+            rows.add(cells)
+        }
+        return MathBlock.Matrix(rows)
     }
 
     private fun rank(matrix: Matrix): Int {
@@ -166,5 +230,79 @@ class MatrixCalculator(
     companion object {
         /** 相对容差：以最大元素绝对值为 1 个单位，小于 1e-40 视为零。 */
         val RANK_RELATIVE_TOLERANCE: BigDecimal = BigDecimal("1e-40")
+
+        /** 输入小数的位数上限。再深下去，精确逆的分母会长到没有阅读价值。 */
+        private const val MAX_EXACT_SCALE = 12
+
+        /** 结果分子/分母的位数上限。超出就退回小数显示。 */
+        private const val MAX_EXACT_DIGITS = 18
+    }
+}
+
+/**
+ * 约分后的有理数，专供精确矩阵求逆使用。
+ *
+ * 不变式：`den > 0`、已约分、`den` 永远不为零。
+ * 精度没有上限——这正是它能给出 `1/3` 而不是 `0.3333…` 的原因；代价是位数可能膨胀，
+ * 所以调用方在出口处按位数决定是否接受。
+ */
+private data class Frac(val num: BigInteger, val den: BigInteger) {
+
+    val isZero: Boolean get() = num.signum() == 0
+
+    /** 分子分母中较长者的位数，用于出口的膨胀检查。 */
+    val digits: Int
+        get() = maxOf(num.abs().toString().length, den.toString().length)
+
+    operator fun plus(other: Frac): Frac = of(num * other.den + other.num * den, den * other.den)
+
+    operator fun minus(other: Frac): Frac = of(num * other.den - other.num * den, den * other.den)
+
+    operator fun times(other: Frac): Frac = of(num * other.num, den * other.den)
+
+    operator fun div(other: Frac): Frac = of(num * other.den, den * other.num)
+
+    /** 渲染成真分式；负号提到分式外面，读起来才是 `−1/3` 而不是 `−1` 压在 `3` 上。 */
+    fun toBlock(): MathBlock {
+        val negative = num.signum() < 0
+        val magnitude = if (den == BigInteger.ONE) {
+            MathBlock.Number(num.abs().toString())
+        } else {
+            MathBlock.Fraction(
+                MathBlock.Number(num.abs().toString()),
+                MathBlock.Number(den.toString())
+            )
+        }
+        return if (negative) MathBlock.Row(listOf(MathBlock.Operator("−"), magnitude)) else magnitude
+    }
+
+    companion object {
+        val ZERO = Frac(BigInteger.ZERO, BigInteger.ONE)
+        val ONE = Frac(BigInteger.ONE, BigInteger.ONE)
+
+        fun of(value: BigDecimal): Frac {
+            val stripped = value.stripTrailingZeros()
+            return if (stripped.scale() <= 0) {
+                of(stripped.toBigIntegerExact(), BigInteger.ONE)
+            } else {
+                of(stripped.unscaledValue(), BigInteger.TEN.pow(stripped.scale()))
+            }
+        }
+
+        fun of(numerator: BigInteger, denominator: BigInteger): Frac {
+            require(denominator.signum() != 0) { "denominator must not be zero" }
+            var num = numerator
+            var den = denominator
+            if (den.signum() < 0) {
+                num = num.negate()
+                den = den.negate()
+            }
+            val gcd = num.gcd(den)
+            if (gcd > BigInteger.ONE) {
+                num = num.divide(gcd)
+                den = den.divide(gcd)
+            }
+            return Frac(num, den)
+        }
     }
 }

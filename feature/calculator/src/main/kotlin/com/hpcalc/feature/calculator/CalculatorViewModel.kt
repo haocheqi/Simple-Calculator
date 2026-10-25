@@ -15,6 +15,7 @@ import com.hpcalc.core.model.AngleUnit
 import com.hpcalc.core.model.CalculatorMode
 import com.hpcalc.core.model.DisplayMode
 import com.hpcalc.core.model.EvaluationContext
+import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.Matrix
 import com.hpcalc.core.model.MatrixOperation
 import com.hpcalc.core.model.plainText
@@ -65,12 +66,34 @@ class CalculatorViewModel(
     fun onEvent(event: CalculatorUiEvent) {
         when (event) {
             is CalculatorUiEvent.Append -> mutate {
-                it.copy(expression = (it.expression + event.text).take(MAX_EXPRESSION))
+                val edited = insertAt(it.expression, it.caret, event.text, MAX_EXPRESSION)
+                it.copy(expression = edited.expression, caret = edited.caret)
             }
 
-            CalculatorUiEvent.Delete -> mutate { it.copy(expression = it.expression.dropLast(1)) }
+            // 只删光标左边那一个字符：光标可以被点到中间，退格必须跟着光标走。
+            CalculatorUiEvent.Delete -> mutate {
+                val edited = deleteBefore(it.expression, it.caret)
+                it.copy(expression = edited.expression, caret = edited.caret)
+            }
 
-            CalculatorUiEvent.Clear -> mutate { it.copy(expression = "") }
+            is CalculatorUiEvent.SetCaret -> mutate {
+                it.copy(caret = moveCaret(it.expression, event.index))
+            }
+
+            // AC 必须连结果和错误一起清掉，否则清完空算式还留着一个旧结果。
+            CalculatorUiEvent.Clear -> mutate {
+                it.copy(
+                    expression = "",
+                    caret = 0,
+                    result = MathBlock.Number("0"),
+                    exactResult = null,
+                    showsExactFraction = false
+                )
+            }
+
+            CalculatorUiEvent.ToggleResultForm -> mutate {
+                if (it.exactResult == null) it else it.copy(showsExactFraction = !it.showsExactFraction)
+            }
 
             CalculatorUiEvent.Evaluate -> evaluate()
 
@@ -84,7 +107,12 @@ class CalculatorViewModel(
 
             is CalculatorUiEvent.SwitchTheme -> launchIo { settingsRepository.setTheme(event.theme) }
 
-            is CalculatorUiEvent.Reuse -> mutate { it.copy(expression = event.expression.take(MAX_EXPRESSION)) }
+            is CalculatorUiEvent.Reuse -> mutate {
+                it.copy(
+                    expression = event.expression.take(MAX_EXPRESSION),
+                    caret = event.expression.take(MAX_EXPRESSION).length
+                )
+            }
 
             CalculatorUiEvent.ClearHistory -> launchIo { history.clear() }
 
@@ -139,7 +167,15 @@ class CalculatorViewModel(
                     displayMode = snapshot.displayMode
                 )
             }
-            mutate { it.copy(result = outcome.block, ans = outcome.value ?: it.ans) }
+            mutate {
+                it.copy(
+                    result = outcome.block,
+                    ans = outcome.value ?: it.ans,
+                    exactResult = outcome.exact,
+                    // 新结果回到设置里的默认形态；之后可以用 S⇔D 临时切。
+                    showsExactFraction = it.displayMode == DisplayMode.EXACT_FRACTION
+                )
+            }
             if (outcome.succeeded) {
                 history.insert(
                     HistoryEntity(
@@ -207,6 +243,7 @@ class CalculatorViewModel(
         val next = transform(local.value)
         local.value = next
         savedStateHandle[KEY_EXPRESSION] = next.expression
+        savedStateHandle[KEY_CARET] = next.caret
         savedStateHandle[KEY_MODE] = next.mode.name
         savedStateHandle[KEY_ANS] = next.ans?.toPlainString()
         savedStateHandle[KEY_MATRIX_ROWS] = next.matrix.rows
@@ -241,11 +278,15 @@ class CalculatorViewModel(
         val right = savedStateHandle.get<String>(KEY_MATRIX_RIGHT)?.toGrid(rightRows, rightColumnCount)
             ?: blankMatrixGrid(rightRows, rightColumnCount)
 
+        val expression = savedStateHandle.get<String>(KEY_EXPRESSION) ?: ""
+
         return CalculatorUiState(
             mode = savedStateHandle.get<String>(KEY_MODE)
                 ?.let { runCatching { CalculatorMode.valueOf(it) }.getOrNull() }
                 ?: CalculatorMode.BASIC,
-            expression = savedStateHandle.get<String>(KEY_EXPRESSION) ?: "",
+            expression = expression,
+            caret = savedStateHandle.get<Int>(KEY_CARET)?.coerceIn(0, expression.length)
+                ?: expression.length,
             ans = savedStateHandle.get<String>(KEY_ANS)?.toBigDecimalOrNull(),
             substituteVariable = savedStateHandle.get<String>(KEY_SUBSTITUTE_VARIABLE) ?: "x",
             substituteValue = savedStateHandle.get<String>(KEY_SUBSTITUTE_VALUE) ?: "",
@@ -273,6 +314,7 @@ class CalculatorViewModel(
 
         private const val CELL_SEPARATOR = "|"
         private const val KEY_EXPRESSION = "expression"
+        private const val KEY_CARET = "caret"
         private const val KEY_MODE = "mode"
         private const val KEY_ANS = "ans"
         private const val KEY_SUBSTITUTE_VARIABLE = "substituteVariable"

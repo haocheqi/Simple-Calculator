@@ -53,18 +53,21 @@ private fun function(label: String, insert: String) =
 /**
  * 主键盘：4 列 × 5 行，基础模式与科学模式共用。
  *
- * 默认只保留四则运算、括号、小数与退格；函数能力交给科学模式上方的函数条，
- * 这样基础模式在视觉上足够安静，加函数时又不用换一套键盘。
+ * 布局取舍：
+ * - 第一行放 `AC` 与退格。退格是最高频的纠错键，放右下角容易被 `=` 误触，放顶行反而安全。
+ * - 右列固定是运算符（`÷ × − +`），`=` 紧挨在 `+` 左边——保持运算符成列，肌肉记忆才不会断。
+ * - `0` 不再横跨两格：需要腾出位置给退格，而 4×5=20 格刚好放下 20 个键。
  */
 val mainKeypad: List<List<KeySpec>> = listOf(
-    listOf(clearKey, operator("(", "("), operator(")", ")"), operator("÷", "/")),
-    listOf(digit(7), digit(8), digit(9), operator("×", "*")),
-    listOf(digit(4), digit(5), digit(6), operator("−", "-")),
-    listOf(digit(1), digit(2), digit(3), operator("+", "+")),
+    listOf(clearKey, backspaceKey, operator("(", "("), operator(")", ")")),
+    listOf(digit(7), digit(8), digit(9), operator("÷", "/")),
+    listOf(digit(4), digit(5), digit(6), operator("×", "*")),
+    listOf(digit(1), digit(2), digit(3), operator("−", "-")),
     listOf(
-        KeySpec(label = "0", insert = "0", weight = 2f),
+        KeySpec(label = "0", insert = "0"),
         KeySpec(label = ".", insert = "."),
-        equalsKey
+        equalsKey,
+        operator("+", "+")
     )
 )
 

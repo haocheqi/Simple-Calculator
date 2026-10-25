@@ -10,5 +10,13 @@ object CalcTokens {
     val ScreenPadding = 16.dp
     val SectionSpacing = 12.dp
     val DisplayMinHeight = 132.dp
-    val FunctionStripHeight = 44.dp
+
+    /**
+     * 函数键的高度与宽度。
+     *
+     * 科学模式要放 17 个函数，48dp 宽刚好能在 360dp 屏上每行放 6 个、
+     * 折成 3 行而不是要求横向滚动。
+     */
+    val FunctionStripHeight = 40.dp
+    val FunctionKeyWidth = 48.dp
 }

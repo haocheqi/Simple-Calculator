@@ -1,18 +1,24 @@
 package com.hpcalc.feature.calculator
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -23,13 +29,24 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hpcalc.core.designsystem.CalcKey
@@ -59,6 +76,9 @@ fun CalculatorScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            // Android 15 起强制 edge-to-edge，不主动让出系统栏就会画到状态栏底下，
+            // 顶部按钮既难点中、也容易和通知栏手势打架。
+            .windowInsetsPadding(WindowInsets.systemBars)
             .padding(horizontal = CalcTokens.ScreenPadding)
             .padding(top = CalcTokens.ScreenPadding)
     ) {
@@ -72,6 +92,7 @@ fun CalculatorScreen(
         if (state.mode == CalculatorMode.MATRIX) {
             DisplayArea(
                 state = state,
+                onEvent = onEvent,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 88.dp, max = 160.dp)
@@ -87,6 +108,7 @@ fun CalculatorScreen(
         } else {
             DisplayArea(
                 state = state,
+                onEvent = onEvent,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -179,34 +201,107 @@ private fun CalculatorMode.labelRes(): Int = when (this) {
  * 这里不拼字符串，也不做任何格式化——格式化在 `:core:math` 已完成。
  */
 @Composable
-private fun DisplayArea(state: CalculatorUiState, modifier: Modifier = Modifier) {
+private fun DisplayArea(
+    state: CalculatorUiState,
+    onEvent: (CalculatorUiEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.End
     ) {
-        Text(
-            text = state.expression.ifEmpty { stringResource(R.string.display_placeholder) },
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (state.expression.isEmpty()) {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth()
-        )
+        ExpressionLine(state = state, onEvent = onEvent)
         Spacer(Modifier.height(CalcTokens.SectionSpacing))
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                MathBlockView(block = state.result, style = rememberMathTextStyle(34.sp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 只有结果同时具备小数与分数两种形态时才给这个开关，避免点了没反应。
+            if (state.canToggleForm) {
+                FormToggle(
+                    showsFraction = state.showsExactFraction,
+                    onClick = { onEvent(CalculatorUiEvent.ToggleResultForm) }
+                )
+                Spacer(Modifier.width(CalcTokens.KeyGap))
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MathBlockView(block = state.shownResult, style = rememberMathTextStyle(34.sp))
+                }
             }
         }
+    }
+}
+
+/**
+ * 算式行：点击任意位置把光标挪过去。
+ *
+ * 光标位置由 [TextLayoutResult.getOffsetForPosition] 从点击坐标反推，所以不需要额外的方向键，
+ * 也不用把算式换成可编辑输入框——那样会招来系统键盘，和自带键盘打架。
+ * 光标停在中间时画一条竖线，停在末尾时不画（末尾是隐式的）。
+ */
+@Composable
+private fun ExpressionLine(state: CalculatorUiState, onEvent: (CalculatorUiEvent) -> Unit) {
+    val caretColor = MaterialTheme.colorScheme.primary
+    val placeholder = stringResource(R.string.display_placeholder)
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    val annotated = if (state.expression.isEmpty()) {
+        AnnotatedString(placeholder)
+    } else {
+        buildAnnotatedString {
+            val caret = state.caret.coerceIn(0, state.expression.length)
+            append(state.expression.substring(0, caret))
+            if (caret < state.expression.length) {
+                withStyle(SpanStyle(color = caretColor)) { append("|") }
+            }
+            append(state.expression.substring(caret))
+        }
+    }
+
+    Text(
+        text = annotated,
+        style = MaterialTheme.typography.bodyLarge,
+        color = if (state.expression.isEmpty()) {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.End,
+        onTextLayout = { layoutResult = it },
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(state.expression) {
+                detectTapGestures { offset ->
+                    val layout = layoutResult ?: return@detectTapGestures
+                    onEvent(CalculatorUiEvent.SetCaret(layout.getOffsetForPosition(offset)))
+                }
+            }
+    )
+}
+
+/** S⇔D：在小数与精确分数之间切换当前结果。 */
+@Composable
+private fun FormToggle(showsFraction: Boolean, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = "S⇔D",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (showsFraction) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
     }
 }
 
@@ -263,19 +358,25 @@ private fun SubstitutionStrip(
     }
 }
 
+/**
+ * 函数条。
+ *
+ * 用 [FlowRow] 折行而不是横向滚动：科学模式有 17 个函数，一列滚动的条要滑好几次才找得到
+ * `abs`，而横向滚动在手机上没有可见提示。折成 3 行后所有函数一眼可及。
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FunctionStrip(specs: List<KeySpec>, onEvent: (CalculatorUiEvent) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(CalcTokens.KeyGap)
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CalcTokens.KeyGap),
+        verticalArrangement = Arrangement.spacedBy(CalcTokens.KeyGap)
     ) {
         specs.forEach { spec ->
             CalcKey(
                 label = spec.label,
                 onClick = { dispatch(spec, onEvent) },
-                modifier = Modifier.width(56.dp),
+                modifier = Modifier.width(CalcTokens.FunctionKeyWidth),
                 style = CalcKeyStyle.FUNCTION,
                 description = spec.descriptionRes?.let { stringResource(it) },
                 minHeight = CalcTokens.FunctionStripHeight

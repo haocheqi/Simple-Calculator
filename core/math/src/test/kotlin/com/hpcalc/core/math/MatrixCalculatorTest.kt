@@ -1,5 +1,6 @@
 package com.hpcalc.core.math
 
+import com.hpcalc.core.model.MathBlock
 import com.hpcalc.core.model.MathError
 import com.hpcalc.core.model.Matrix
 import com.hpcalc.core.model.MatrixOperation
@@ -144,4 +145,81 @@ class MatrixCalculatorTest {
         val result = calculator.evaluate(MatrixOperation.Determinant(six))
         assertTrue(result is MatrixResult.Scalar)
     }
-}
+
+    // --- 精确逆（真分式） ---------------------------------------------------
+    // 整数矩阵的逆几乎总是分数，用 50 位小数写出来既不准也难读。
+
+    /** 把呈现树压成紧凑文本，便于断言结构而不是像素。 */
+    private fun MathBlock.describe(): String = when (this) {
+        is MathBlock.Number -> literal
+        is MathBlock.Operator -> text
+        is MathBlock.Fraction -> "${numerator.describe()}/${denominator.describe()}"
+        is MathBlock.Row -> children.joinToString("") { it.describe() }
+        is MathBlock.Matrix -> rows.joinToString("; ") { row -> row.joinToString(", ") { it.describe() } }
+        else -> "<other>"
+    }
+
+    private fun exactOf(operation: MatrixOperation): MathBlock? =
+        (calculator.evaluate(operation) as MatrixResult.Success).exact
+
+    @Test
+    fun `G01 integer inverse renders as exact fractions`() {
+        val inverse = exactOf(MatrixOperation.Inverse(matrixOf(listOf(1, 2), listOf(3, 4))))
+        assertEquals("−2, 1; 3/2, −1/2", inverse?.describe())
+    }
+
+    @Test
+    fun `G02 identity inverse stays integral`() {
+        val inverse = exactOf(MatrixOperation.Inverse(matrixOf(listOf(1, 0), listOf(0, 1))))
+        assertEquals("1, 0; 0, 1", inverse?.describe())
+    }
+
+    @Test
+    fun `G03 scalar matrix inverse has unit numerators`() {
+        val inverse = exactOf(MatrixOperation.Inverse(matrixOf(listOf(2, 0), listOf(0, 2))))
+        assertEquals("1/2, 0; 0, 1/2", inverse?.describe())
+    }
+
+    @Test
+    fun `G04 three by three inverse keeps every fraction reduced`() {
+        val inverse = exactOf(
+            MatrixOperation.Inverse(matrixOf(listOf(1, 1, 0), listOf(0, 1, 1), listOf(1, 0, 1)))
+        )
+        assertEquals("1/2, −1/2, 1/2; 1/2, 1/2, −1/2; −1/2, 1/2, 1/2", inverse?.describe())
+    }
+
+    @Test
+    fun `G05 singular matrix reports an error and produces no exact form`() {
+        val singular = matrixOf(listOf(1, 2), listOf(2, 4))
+        assertEquals(MathError.SingularMatrix, failure(MatrixOperation.Inverse(singular)))
+    }
+
+    @Test
+    fun `G06 decimals become fractions exactly`() {
+        // 0.5 的逆是 2，输入用小数，结果必须精确。
+        val inverse = exactOf(
+            MatrixOperation.Inverse(
+                Matrix(
+                    listOf(
+                        listOf(BigDecimal("0.5"), BigDecimal.ZERO),
+                        listOf(BigDecimal.ZERO, BigDecimal("0.5"))
+                    )
+                )
+            )
+        )
+        assertEquals("2, 0; 0, 2", inverse?.describe())
+    }
+
+    @Test
+    fun `G07 very deep decimals fall back to the decimal matrix`() {
+        // 分母会长到没有阅读价值，此时宁可不给精确形式。
+        val deep = Matrix(
+            listOf(
+                listOf(BigDecimal("0.0000000000001"), BigDecimal.ZERO),
+                listOf(BigDecimal.ZERO, BigDecimal.ONE)
+            )
+        )
+        val result = calculator.evaluate(MatrixOperation.Inverse(deep)) as MatrixResult.Success
+        assertEquals(null, result.exact)
+        assertTrue(result.matrix.rows[0][0] > BigDecimal("1e12"))
+    }}

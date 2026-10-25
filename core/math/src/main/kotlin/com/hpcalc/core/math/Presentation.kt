@@ -69,7 +69,7 @@ fun SymbolicResult.toMathBlock(): MathBlock = when (this) {
 }
 
 fun MatrixResult.toMathBlock(mode: DisplayMode): MathBlock = when (this) {
-    is MatrixResult.Success -> matrix.toMathBlock()
+    is MatrixResult.Success -> exact ?: matrix.toMathBlock()
     is MatrixResult.Scalar -> value.toMathBlock(mode)
     is MatrixResult.Text -> MathBlock.Text(value)
     is MatrixResult.Error -> MathBlock.Error(error)

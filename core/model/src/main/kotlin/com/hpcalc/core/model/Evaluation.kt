@@ -30,7 +30,11 @@ sealed interface SymbolicResult {
 
 /** 矩阵求值结果。 */
 sealed interface MatrixResult {
-    data class Success(val matrix: Matrix) : MatrixResult
+    /**
+     * 矩阵结果。[exact] 是同一结果的精确形式（真分式），例如整数矩阵的逆；
+     * 为空表示只能给小数。
+     */
+    data class Success(val matrix: Matrix, val exact: MathBlock? = null) : MatrixResult
     data class Scalar(val value: BigDecimal) : MatrixResult
     data class Text(val value: String) : MatrixResult
     data class Error(val error: MathError) : MatrixResult

@@ -8,12 +8,20 @@ import com.hpcalc.core.model.ThemeMode
 /** 界面发出的全部意图。ViewModel 是唯一消费方。 */
 sealed interface CalculatorUiEvent {
 
-    /** 追加文本到当前表达式（键盘、函数条、常量都用它）。 */
+    /** 追加文本到当前表达式（键盘、函数条、常量都用它）。插入点是 [CalculatorUiState.caret]。 */
     data class Append(val text: String) : CalculatorUiEvent
 
+    /** 退格：删除光标前一个字符。 */
     data object Delete : CalculatorUiEvent
 
+    /** 把光标挪到指定位置（点击算式时由排版结果换算出字符下标）。 */
+    data class SetCaret(val index: Int) : CalculatorUiEvent
+
+    /** 清空表达式、结果与错误提示，回到干净的初始态。 */
     data object Clear : CalculatorUiEvent
+
+    /** 在小数与精确分数之间切换当前结果的显示形态（S⇔D）。 */
+    data object ToggleResultForm : CalculatorUiEvent
 
     data object Evaluate : CalculatorUiEvent
 

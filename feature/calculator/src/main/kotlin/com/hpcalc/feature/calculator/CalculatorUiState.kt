@@ -108,11 +108,27 @@ data class CalculatorUiState(
     val history: List<HistoryEntity> = emptyList(),
     val settings: Settings = Settings(),
     val matrix: MatrixUiState = MatrixUiState(),
+    /** 表达式里的插入点，取值 `0..expression.length`。 */
+    val caret: Int = 0,
+    /** 同一结果能写成精确分数时的形态；为空表示这个结果只有小数（例如 `sin(1)`）。 */
+    val exactResult: MathBlock? = null,
+    /** 当前是否显示精确分数形态。S⇔D 切换它。 */
+    val showsExactFraction: Boolean = false,
     /** 符号模式代入求值用的变量名，默认 `x`。 */
     val substituteVariable: String = "x",
     /** 代入值，允许填写表达式（`π/2`）。 */
     val substituteValue: String = ""
 ) {
+    /** 结果区真正要画的东西：有精确形态且当前选中它时画分数，否则画小数。 */
+    val shownResult: MathBlock
+        get() = if (showsExactFraction && exactResult != null) exactResult else result
+
+    /** S⇔D 只在结果同时具备两种形态时可用。 */
+    val canToggleForm: Boolean get() = exactResult != null
+
+    /** 光标是否停在末尾——界面据此决定是否画插入符。 */
+    val caretAtEnd: Boolean get() = caret >= expression.length
+
     val showsKeypad: Boolean get() = mode != CalculatorMode.MATRIX
 
     val showsFunctionStrip: Boolean

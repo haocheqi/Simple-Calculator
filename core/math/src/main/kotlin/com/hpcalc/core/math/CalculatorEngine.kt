@@ -26,11 +26,18 @@ class CalculatorEngine(
     private val rational: RationalEvaluator = RationalEvaluator()
 ) {
 
-    /** 一次求值的结果。[value] 非空表示这次结果应当成为下一次的 `ans`。 */
+    /**
+     * 一次求值的结果。
+     *
+     * [value] 非空表示这次结果应当成为下一次的 `ans`；
+     * [exact] 是同一结果能写成精确分数时的形态，界面据此在 S⇔D 之间来回切换——
+     * 不能事后再从 `0.3333…` 反推分数，所以必须在求值时就把精确值留下来。
+     */
     data class Outcome(
         val block: MathBlock,
         val succeeded: Boolean,
-        val value: BigDecimal? = null
+        val value: BigDecimal? = null,
+        val exact: MathBlock? = null
     )
 
     fun evaluate(
@@ -45,25 +52,32 @@ class CalculatorEngine(
         }
         return when (mode) {
             CalculatorMode.BASIC, CalculatorMode.SCIENTIFIC -> {
-                if (displayMode == DisplayMode.EXACT_FRACTION) {
-                    when (val exact = rational.evaluate(trimmed)) {
-                        is RationalResult.Exact -> return Outcome(
-                            block = exact.toMathBlock(),
-                            succeeded = true,
-                            value = exact.toBigDecimal()
-                        )
-                        // 只有「这一步无法精确」才回退小数；
-                        // 真正的错误（除以零、括号不配对）必须如实报出来。
-                        is RationalResult.Error -> if (exact.error !is MathError.Unsupported) {
-                            return Outcome(MathBlock.Error(exact.error), succeeded = false)
-                        }
+                // 不管当前显示模式如何都先试一次精确计算，这样 S⇔D 随时可切。
+                val exactResult = when (val exact = rational.evaluate(trimmed)) {
+                    is RationalResult.Exact -> exact
+                    // 真正的错误（除以零、括号不配对）必须如实报出来；
+                    // 只有「这一步无法精确」才继续走小数。
+                    is RationalResult.Error -> if (exact.error !is MathError.Unsupported) {
+                        return Outcome(MathBlock.Error(exact.error), succeeded = false)
+                    } else {
+                        null
                     }
+                }
+                if (exactResult != null && displayMode == DisplayMode.EXACT_FRACTION) {
+                    val block = exactResult.toMathBlock()
+                    return Outcome(
+                        block = block,
+                        succeeded = true,
+                        value = exactResult.toBigDecimal(),
+                        exact = block
+                    )
                 }
                 when (val result = numeric.evaluate(trimmed, context)) {
                     is EvaluationResult.Success -> Outcome(
                         block = result.value.toMathBlock(displayMode),
                         succeeded = true,
-                        value = result.value
+                        value = result.value,
+                        exact = exactResult?.toMathBlock()
                     )
                     is EvaluationResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
                 }
