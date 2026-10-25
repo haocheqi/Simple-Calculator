@@ -95,7 +95,7 @@ fun CalculatorScreen(
                 onEvent = onEvent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 88.dp, max = 160.dp)
+                    .heightIn(min = 88.dp, max = if (state.mode == CalculatorMode.MATRIX) 220.dp else 160.dp)
             )
             Spacer(Modifier.height(CalcTokens.SectionSpacing))
             MatrixPanel(
@@ -211,6 +211,9 @@ private fun DisplayArea(
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.End
     ) {
+        // 矩阵结果里塞的是真分式，一格就有两行高；给足纵向空间，剩下的交给等比缩放。
+        val displayFontSize = if (state.mode == CalculatorMode.MATRIX) 28.sp else 34.sp
+
         ExpressionLine(state = state, onEvent = onEvent)
         Spacer(Modifier.height(CalcTokens.SectionSpacing))
         Row(
@@ -226,12 +229,9 @@ private fun DisplayArea(
                 Spacer(Modifier.width(CalcTokens.KeyGap))
             }
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    MathBlockView(block = state.shownResult, style = rememberMathTextStyle(34.sp))
-                }
+                // 不套横向滚动：让 [MathBlockView] 拿到有限的宽高，超界时会等比缩小。
+                // 分式矩阵（一格两行高、还带分数线）在 34sp 下撑不下，滚动只能看到一半。
+                MathBlockView(block = state.shownResult, style = rememberMathTextStyle(displayFontSize))
             }
         }
     }
