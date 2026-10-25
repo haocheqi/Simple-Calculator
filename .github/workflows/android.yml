@@ -1,7 +1,8 @@
 name: Android CI
 
-# wrapper 也在库里（gradlew + gradle/wrapper），这里仍用 setup-gradle 固定同一版本
-# （8.10.2）并吃它的依赖缓存，两条路径行为一致。
+# 构建一律走仓库自带的 wrapper：版本由 gradle-wrapper.properties 固定，
+# 不依赖 runner 上预装的 gradle 是哪个版本，也不依赖 setup-gradle 是否把
+# `gradle` 塞进 PATH。setup-gradle 只用来做依赖缓存。
 on:
   push:
     branches: [main]
@@ -33,19 +34,26 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: 安装 Gradle
+      # 版本由 wrapper 固定，这个 action 只负责依赖缓存与构建扫描配置；
+      # 不再传 gradle-version，避免 runner 上的 gradle 与 wrapper 打架。
+      - name: 准备 Gradle 缓存
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.10.2
 
       - name: 安装 Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: 构建环境自检
+        # 先跑一次 --version：wrapper 下载/解压失败、JAVA_HOME 不对，都在这里暴露，
+        # 而不是等到几分钟后某个任务报一串看不懂的错。
+        run: |
+          java -version
+          ./gradlew --version
+
       - name: 单元测试
-        run: gradle test --console=plain --stacktrace
+        run: ./gradlew test --console=plain --stacktrace
 
       - name: 构建 debug APK
-        run: gradle assembleDebug --console=plain
+        run: ./gradlew assembleDebug --console=plain
 
       - name: 上传测试报告
         if: failure()
@@ -75,10 +83,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: 安装 Gradle
+      # 版本由 wrapper 固定，这个 action 只负责依赖缓存与构建扫描配置；
+      # 不再传 gradle-version，避免 runner 上的 gradle 与 wrapper 打架。
+      - name: 准备 Gradle 缓存
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.10.2
 
       - name: 安装 Android SDK
         uses: android-actions/setup-android@v3
@@ -114,7 +122,7 @@ jobs:
           echo "签名材料可读：$KEY_ALIAS"
 
       - name: 构建 release APK
-        run: gradle assembleRelease --console=plain
+        run: ./gradlew assembleRelease --console=plain
 
       - name: 校验打包结果
         # 包名、versionName、签名证书（必须不是 debug 证书）、两种语言的资源是否被
