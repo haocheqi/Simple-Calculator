@@ -39,8 +39,28 @@ jobs:
       - name: 准备 Gradle 缓存
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 安装 Android SDK
-        uses: android-actions/setup-android@v3
+      - name: 准备 Android SDK
+        # 不用 android-actions/setup-android：它会去装早已从仓库下线的 "tools" 包，
+        # 新版 sdkmanager 直接报 Failed to find package 'tools' 并退出。
+        # runner 镜像自带 SDK，这里只确保工程需要的 platform 与 build-tools 在。
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            echo "找不到 Android SDK（ANDROID_SDK_ROOT/ANDROID_HOME 都为空）" >&2
+            exit 1
+          fi
+          echo "SDK=$SDK"
+          SDKM="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)"
+          if [ -n "$SDKM" ] && [ -x "$SDKM" ]; then
+            echo "sdkmanager=$SDKM"
+            yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+            "$SDKM" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          else
+            echo "没有 sdkmanager，依赖镜像自带的 platform 与 build-tools"
+          fi
+          ls "$SDK/platforms"
+          ls "$SDK/build-tools"
 
       - name: 构建环境自检
         # 先跑一次 --version：wrapper 下载/解压失败、JAVA_HOME 不对，都在这里暴露，
@@ -88,8 +108,28 @@ jobs:
       - name: 准备 Gradle 缓存
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 安装 Android SDK
-        uses: android-actions/setup-android@v3
+      - name: 准备 Android SDK
+        # 不用 android-actions/setup-android：它会去装早已从仓库下线的 "tools" 包，
+        # 新版 sdkmanager 直接报 Failed to find package 'tools' 并退出。
+        # runner 镜像自带 SDK，这里只确保工程需要的 platform 与 build-tools 在。
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            echo "找不到 Android SDK（ANDROID_SDK_ROOT/ANDROID_HOME 都为空）" >&2
+            exit 1
+          fi
+          echo "SDK=$SDK"
+          SDKM="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)"
+          if [ -n "$SDKM" ] && [ -x "$SDKM" ]; then
+            echo "sdkmanager=$SDKM"
+            yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+            "$SDKM" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          else
+            echo "没有 sdkmanager，依赖镜像自带的 platform 与 build-tools"
+          fi
+          ls "$SDK/platforms"
+          ls "$SDK/build-tools"
 
       - name: 恢复签名材料
         # 用 env 传密钥，避免 secret 被拼进脚本正文；也避免 heredoc 缩进污染 properties。
