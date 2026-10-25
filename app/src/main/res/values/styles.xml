@@ -1,7 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      界面完全由 Compose 绘制，平台主题只影响两件事：启动时的窗口底色，以及系统栏图标明暗。
+      两者都用 values-night 限定符覆盖，避免深色模式冷启动先闪一帧白底（验收 I01）。
+    -->
     <style name="Theme.Calculator" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+        <item name="android:navigationBarColor">@color/window_background</item>
+        <item name="android:windowLightStatusBar">@bool/light_status_bar</item>
+        <item name="android:windowLightNavigationBar">@bool/light_status_bar</item>
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:colorAccent">#6750A4</item>
     </style>
 </resources>

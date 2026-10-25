@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 默认（英文）资源。中文在 values-zh-rCN/strings.xml。 -->
+<resources>
+
+    <string name="app_name">Calculator</string>
+
+    <!-- 无障碍描述 -->
+    <string name="cd_clear">Clear all</string>
+    <string name="cd_backspace">Backspace</string>
+    <string name="cd_equals">Evaluate</string>
+
+    <!-- 顶栏 -->
+    <string name="action_history">History</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_back">Back</string>
+    <string name="display_placeholder">Enter an expression</string>
+
+    <!-- 模式 -->
+    <string name="mode_basic">Basic</string>
+    <string name="mode_scientific">Scientific</string>
+    <string name="mode_symbolic">Symbolic</string>
+    <string name="mode_matrix">Matrix</string>
+
+    <!-- 历史 -->
+    <string name="history_title">History</string>
+    <string name="history_empty">No calculations yet</string>
+    <string name="history_clear">Clear history</string>
+    <string name="history_delete">Delete this entry</string>
+    <string name="history_use">Reuse</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <string name="settings_angle">Angle unit</string>
+    <string name="angle_radians">Radians</string>
+    <string name="angle_degrees">Degrees</string>
+    <string name="angle_gradians">Gradians</string>
+
+    <string name="settings_display">Display format</string>
+    <string name="display_decimal">Decimal</string>
+    <string name="display_engineering">Engineering</string>
+
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_precision">%1$d-digit internal precision, %2$d digits shown</string>
+
+    <!-- 矩阵 -->
+    <string name="matrix_title">Matrix</string>
+    <string name="matrix_size">Size</string>
+    <string name="matrix_a">Matrix A</string>
+    <string name="matrix_b">Matrix B</string>
+    <string name="matrix_compute">Compute</string>
+    <string name="matrix_hint">Empty cells count as 0</string>
+
+    <string name="matrix_op_add">A + B</string>
+    <string name="matrix_op_subtract">A − B</string>
+    <string name="matrix_op_multiply">A × B</string>
+    <string name="matrix_op_determinant">det A</string>
+    <string name="matrix_op_inverse">A⁻¹</string>
+    <string name="matrix_op_transpose">Aᵀ</string>
+    <string name="matrix_op_rank">rank A</string>
+
+</resources>

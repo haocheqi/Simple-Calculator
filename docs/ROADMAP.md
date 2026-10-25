@@ -36,8 +36,19 @@
 :feature:calculator   四模式 Screen + ViewModel（阶段 2 引入）
 ```
 
-阶段 1 实到 5 个模块（`:app`、`:core:model`、`:core:math`、`:core:designsystem`、`:data`）；
-`:core:mathui` 与 `:feature:calculator` 在阶段 2 建立。
+阶段 1 实到 5 个模块；阶段 2 补齐 `:core:mathui` 与 `:feature:calculator`，共 7 个模块。
+
+阶段 2 之后的实际分层：
+
+```
+:app                  Application / AppContainer / MainActivity / NavHost
+:core:model           纯 Kotlin，无 Android 依赖
+:core:math            CalculatorEngine（模式分派）+ 三个求值器 + 格式化
+:core:mathui          自定义排版：MeasuredBlock 树 + Canvas 绘制，无 WebView
+:core:designsystem    Theme / CalcTokens / CalcKey
+:data                 Room 历史 + DataStore 设置
+:feature:calculator   UiState / UiEvent / ViewModel / 四个界面
+```
 
 ---
 
@@ -68,6 +79,24 @@
 |---|---|
 | `Poly.times` 不清理零系数 | `(x+1)(x-1)` 会渲染成 `x^2 + 0x - 1`。v2.0 同样存在，由本次新增测试 `E02` 捕获。 |
 | 求秩的绝对阈值 | v2.0 用 `abs() < 1e-40` 判定零，元素量级本身小于该值时整矩阵被判为秩 0。改为相对容差。 |
+
+### 阶段 2
+
+| 计划 | 实际 | 原因 |
+|---|---|---|
+| 保留应用内语言开关 | 删除 `Settings.language`，改为完全跟随系统 locale | v2.0 那个开关只驱动了一个布尔变量，并没有切换任何字符串——是个假功能。`values` + `values-zh-rCN` 已经够用，系统语言一换、应用重进即整体生效。 |
+| `DisplayMode` 作为会话态 | 存进 DataStore，与角度单位同级 | 显示格式是长期偏好，让它跟旋转一起丢不合理。 |
+| 矩阵界面支持任意尺寸（阶段 3） | 阶段 2 只做 n×n（2..6） | 矩形矩阵的运算能力阶段 1 就有，但输入网格的尺寸联动（A 的列数决定 B 的行数）会牵动状态模型，放到阶段 3 与「任意矩阵」一起做，避免一次动排版＋状态＋矩阵三块。 |
+| 排版用 `createComposeRule` 做组件测试 | 未做 | 组件测试要跑在设备上；本环境没有设备也没有模拟器。评估过引入 Robolectric 在 JVM 跑 Compose，但它需要 `android-all` 体积与 native 图形配置，对本项目的收益不足以抵消复杂度。**代价：排版只有编译期保证，没有视觉证据**，H01 必须靠人眼验收。 |
+| 精确分数显示 | 推迟到阶段 3，与 `RationalEvaluator` 一起 | `Fraction` 排版节点已经实现并有测试，但没有任何生产者能产出它——硬造一个「看起来像分数」的字符串是假功能。`DisplayMode` 因此阶段 2 只有 `DECIMAL` / `ENGINEERING`。 |
+| —— | 新增 `CalculatorEngine` | 原计划 ViewModel 直接调三个求值器。抽出来之后模式分派变成纯函数，可以在 JVM 上覆盖全部分支，ViewModel 只剩状态搬运。 |
+
+### 阶段 2 修复的额外缺陷
+
+| 缺陷 | 说明 |
+|---|---|
+| 工程记数法形同虚设 | `BigDecimal.toEngineeringString()` 只在 adjusted exponent < -6 或 scale < 0 时才输出 `E`；像 `12345678.9` 仍原样返回，导致「工程记数」和「小数」看起来一样。改为自己算 3 的倍数指数。由新增测试 `engineering mode always switches notation` 捕获。 |
+| 深色模式冷启动白闪 | v2.0 没有 `values-night`，平台主题的 `windowBackground` 在深色模式下仍是浅色。补上 `values-night/colors.xml` 与 `bools.xml`（同时翻转系统栏图标明暗）。 |
 
 ---
 

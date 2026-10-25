@@ -19,5 +19,7 @@ rootProject.name = "Calculator"
 include(":app")
 include(":core:model")
 include(":core:math")
+include(":core:mathui")
 include(":core:designsystem")
 include(":data")
+include(":feature:calculator")

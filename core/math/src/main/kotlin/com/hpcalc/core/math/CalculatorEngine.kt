@@ -1,0 +1,82 @@
+package com.hpcalc.core.math
+
+import com.hpcalc.core.model.CalculatorMode
+import com.hpcalc.core.model.DisplayMode
+import com.hpcalc.core.model.EvaluationContext
+import com.hpcalc.core.model.EvaluationResult
+import com.hpcalc.core.model.MathBlock
+import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MatrixOperation
+import com.hpcalc.core.model.MatrixResult
+import com.hpcalc.core.model.SymbolicResult
+import com.hpcalc.core.model.toMathBlock
+import java.math.BigDecimal
+
+/**
+ * 把「模式 + 输入」翻译成「可渲染结果 + 新 ans」的唯一入口。
+ *
+ * 这里刻意不含协程、不含 Android 依赖，因此可以直接用 JVM 单测覆盖；
+ * ViewModel 只负责状态搬运与持久化，不再参与求值决策。
+ */
+class CalculatorEngine(
+    private val numeric: HighPrecisionEvaluator = HighPrecisionEvaluator(),
+    private val symbolic: PolynomialCalculator = PolynomialCalculator(),
+    private val matrix: MatrixCalculator = MatrixCalculator()
+) {
+
+    /** 一次求值的结果。[value] 非空表示这次结果应当成为下一次的 `ans`。 */
+    data class Outcome(
+        val block: MathBlock,
+        val succeeded: Boolean,
+        val value: BigDecimal? = null
+    )
+
+    fun evaluate(
+        mode: CalculatorMode,
+        input: String,
+        context: EvaluationContext,
+        displayMode: DisplayMode
+    ): Outcome {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) {
+            return Outcome(MathBlock.Text(""), succeeded = false)
+        }
+        return when (mode) {
+            CalculatorMode.BASIC, CalculatorMode.SCIENTIFIC -> when (val result = numeric.evaluate(trimmed, context)) {
+                is EvaluationResult.Success -> Outcome(
+                    block = result.value.toMathBlock(displayMode),
+                    succeeded = true,
+                    value = result.value
+                )
+                is EvaluationResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
+            }
+
+            CalculatorMode.SYMBOLIC -> {
+                symbolic.setAns(context.ans)
+                when (val result = symbolic.simplify(trimmed)) {
+                    is SymbolicResult.Success -> Outcome(
+                        block = result.toMathBlock(),
+                        succeeded = true,
+                        // 化简结果能解析成数字时才更新 ans（例如 x-x 得到 0）。
+                        value = result.expression.toBigDecimalOrNull()
+                    )
+                    is SymbolicResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
+                }
+            }
+
+            // 矩阵模式由专用面板驱动，不走表达式求值。
+            CalculatorMode.MATRIX -> Outcome(
+                MathBlock.Error(MathError.Unsupported("matrix mode uses the matrix panel")),
+                succeeded = false
+            )
+        }
+    }
+
+    fun matrix(operation: MatrixOperation, displayMode: DisplayMode): Outcome =
+        when (val result = matrix.evaluate(operation)) {
+            is MatrixResult.Success -> Outcome(result.matrix.toMathBlock(), succeeded = true)
+            is MatrixResult.Scalar -> Outcome(result.value.toMathBlock(displayMode), succeeded = true, value = result.value)
+            is MatrixResult.Text -> Outcome(MathBlock.Text(result.value), succeeded = true)
+            is MatrixResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)
+        }
+}

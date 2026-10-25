@@ -12,8 +12,8 @@ android {
         applicationId = "com.hpcalc.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "3.0-w1"
+        versionCode = 4
+        versionName = "3.0-w2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -34,8 +34,10 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:math"))
+    implementation(project(":core:mathui"))
     implementation(project(":core:designsystem"))
     implementation(project(":data"))
+    implementation(project(":feature:calculator"))
 
     implementation(platform("androidx.compose:compose-bom:${libs.versions.composeBom.get()}"))
     implementation("androidx.compose.ui:ui")

@@ -1,11 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:icon="@drawable/ic_calculator" android:roundIcon="@drawable/ic_calculator" android:theme="@style/Theme.Calculator" android:label="Calculator" android:allowBackup="true" android:supportsRtl="true">
-        <activity android:name=".MainActivity" android:exported="true">
+
+    <application
+        android:name=".CalculatorApplication"
+        android:allowBackup="true"
+        android:icon="@drawable/ic_calculator"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_calculator"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Calculator">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>
-</manifest>
 
+</manifest>

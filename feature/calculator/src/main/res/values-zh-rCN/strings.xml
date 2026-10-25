@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 简体中文资源。系统语言切换到中文后重进应用即整体生效。 -->
+<resources>
+
+    <string name="app_name">计算器</string>
+
+    <string name="cd_clear">全部清除</string>
+    <string name="cd_backspace">退格</string>
+    <string name="cd_equals">计算结果</string>
+
+    <string name="action_history">历史</string>
+    <string name="action_settings">设置</string>
+    <string name="action_back">返回</string>
+    <string name="display_placeholder">输入算式</string>
+
+    <string name="mode_basic">基础</string>
+    <string name="mode_scientific">科学</string>
+    <string name="mode_symbolic">符号</string>
+    <string name="mode_matrix">矩阵</string>
+
+    <string name="history_title">历史记录</string>
+    <string name="history_empty">还没有计算记录</string>
+    <string name="history_clear">清空历史</string>
+    <string name="history_delete">删除这条记录</string>
+    <string name="history_use">重新使用</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_theme">主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+
+    <string name="settings_angle">角度单位</string>
+    <string name="angle_radians">弧度</string>
+    <string name="angle_degrees">角度</string>
+    <string name="angle_gradians">百分度</string>
+
+    <string name="settings_display">显示格式</string>
+    <string name="display_decimal">小数</string>
+    <string name="display_engineering">工程记数</string>
+
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本 %1$s</string>
+    <string name="settings_precision">内部 %1$d 位精度，显示 %2$d 位</string>
+
+    <string name="matrix_title">矩阵</string>
+    <string name="matrix_size">阶数</string>
+    <string name="matrix_a">矩阵 A</string>
+    <string name="matrix_b">矩阵 B</string>
+    <string name="matrix_compute">计算</string>
+    <string name="matrix_hint">留空的单元格按 0 处理</string>
+
+    <string name="matrix_op_add">A + B</string>
+    <string name="matrix_op_subtract">A − B</string>
+    <string name="matrix_op_multiply">A × B</string>
+    <string name="matrix_op_determinant">det A</string>
+    <string name="matrix_op_inverse">A⁻¹</string>
+    <string name="matrix_op_transpose">Aᵀ</string>
+    <string name="matrix_op_rank">rank A</string>
+
+</resources>

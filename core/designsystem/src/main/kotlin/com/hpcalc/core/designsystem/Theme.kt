@@ -20,10 +20,13 @@ private val LightCalculatorColors = lightColorScheme(
     onPrimaryContainer = Ink,
     secondary = Ink,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFE3B8),
+    onSecondaryContainer = Ink,
     surface = Paper,
     surfaceVariant = Color(0xFFFFF1D6),
     onSurface = Ink,
-    onSurfaceVariant = Color(0xFF5F5548)
+    onSurfaceVariant = Color(0xFF5F5548),
+    outline = Color(0xFFB8A99A)
 )
 
 private val DarkCalculatorColors = darkColorScheme(
@@ -33,10 +36,13 @@ private val DarkCalculatorColors = darkColorScheme(
     onPrimaryContainer = Color.White,
     secondary = Orange,
     onSecondary = Ink,
+    secondaryContainer = Color(0xFF3A3226),
+    onSecondaryContainer = Color(0xFFFFE3B8),
     surface = Color(0xFF161616),
     surfaceVariant = Color(0xFF2A2722),
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFD6C7B4)
+    onSurfaceVariant = Color(0xFFD6C7B4),
+    outline = Color(0xFF6B5F52)
 )
 
 @Composable

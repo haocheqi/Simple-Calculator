@@ -35,6 +35,9 @@ interface HistoryDao {
 
     @Query("DELETE FROM history")
     suspend fun clear()
+
+    @Query("DELETE FROM history WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }
 
 @Database(entities = [HistoryEntity::class], version = 1, exportSchema = false)
