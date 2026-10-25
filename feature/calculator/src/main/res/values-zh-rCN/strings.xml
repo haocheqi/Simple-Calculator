@@ -88,6 +88,7 @@
     <string name="error_clamp_range">下界不能大于上界</string>
     <string name="error_atan2_origin">atan2(0, 0) 无定义</string>
     <string name="error_needs_square">该运算需要方阵</string>
+    <string name="error_invalid_cell">矩阵里有无法识别为数字的单元格</string>
     <string name="error_shape_mismatch">两个矩阵的尺寸不兼容</string>
     <string name="error_argument_too_large">参数过大</string>
     <string name="unsupported_matrix_panel">矩阵请使用矩阵面板</string>

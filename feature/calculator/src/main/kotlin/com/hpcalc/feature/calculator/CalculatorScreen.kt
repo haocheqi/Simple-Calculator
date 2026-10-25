@@ -369,18 +369,26 @@ private fun SubstitutionStrip(
 private fun FunctionStrip(specs: List<KeySpec>, onEvent: (CalculatorUiEvent) -> Unit) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
+        maxItemsInEachRow = CalcTokens.FunctionColumns,
         horizontalArrangement = Arrangement.spacedBy(CalcTokens.KeyGap),
         verticalArrangement = Arrangement.spacedBy(CalcTokens.KeyGap)
     ) {
         specs.forEach { spec ->
+            // 用 weight 均分本行宽度，而不是写死 48dp：
+            // 定宽在窄屏上会把最后几个键挤到第四行，显示区被压到几乎没有。
             CalcKey(
                 label = spec.label,
                 onClick = { dispatch(spec, onEvent) },
-                modifier = Modifier.width(CalcTokens.FunctionKeyWidth),
+                modifier = Modifier.weight(1f),
                 style = CalcKeyStyle.FUNCTION,
                 description = spec.descriptionRes?.let { stringResource(it) },
                 minHeight = CalcTokens.FunctionStripHeight
             )
+        }
+        // 补齐最后一行的空位，否则那一行的 5 个键会被拉宽，看起来像两套尺寸。
+        val remainder = specs.size % CalcTokens.FunctionColumns
+        if (remainder != 0) {
+            repeat(CalcTokens.FunctionColumns - remainder) { Spacer(Modifier.weight(1f)) }
         }
     }
 }

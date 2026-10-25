@@ -46,6 +46,9 @@
 - **科学模式函数条**：17 个函数挤在一条横向滚动条里，没有滚动提示，`abs` 要滑好几次才找得到。改为 `FlowRow` 折行，360dp 屏上每行 6 个、共 3 行，全部可见。
 
 - **事件层纳入自动化测试**：新增 `SettingsStore` 接口与可注入的求值调度器，使 `CalculatorViewModel` 能在纯 JVM 上运行；补 15 条测试覆盖 AC、光标插入/退格、S⇔D、显示模式与角度制送达求值层、旋转后结果复原、历史写入条件。
+- **矩阵求逆显示小数而非真分式（K07）**：精确逆算出来后挂在 `MatrixResult.Success.exact` 上，但引擎调的是 `Matrix.toMathBlock()`，绕开了会用 `exact` 的呈现扩展——分数被丢成 `0.5`/`1.5`。改为走 `MatrixResult.toMathBlock(displayMode)`。之前的测试只断言了矩阵计算器的**中间对象**，所以没拦住；现在补了引擎级与 ViewModel 级各一条端到端用例，并验证过「改回去测试必失败」。
+- **科学模式函数条可能折成 4 行（K07 的另一半）**：定宽 48dp + 8dp 间距在 360dp 屏上刚好占满 328dp，窄一点就掉到每行 5 个、变成 4 行，把显示区压没。改为 `maxItemsInEachRow = 6` + `weight(1f)` 均分，并补齐最后一行的空位，任何屏宽都稳定是 3 行。
+- **矩阵单元格可输入非数字，按「计算」毫无反应**：`evaluateMatrix()` 里是 `?: return`，解析失败就静默返回。现在单元格在状态层过滤成十进制数字符，仍无法解析（如裸 `-`）时给出本地化错误提示。
 ### 变更
 
 - 拆分为 7 个 Gradle 模块：`:app`、`:core:model`、`:core:math`、`:core:mathui`、`:core:designsystem`、`:data`、`:feature:calculator`。

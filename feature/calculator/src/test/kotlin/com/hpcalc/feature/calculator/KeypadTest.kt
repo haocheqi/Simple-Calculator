@@ -1,5 +1,6 @@
 package com.hpcalc.feature.calculator
 
+import com.hpcalc.core.designsystem.CalcTokens
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -76,6 +77,15 @@ class KeypadTest {
                     insert.all { it in allowed || it.isLetter() }
                 )
             }
+        }
+    }
+    @Test
+    fun `the function strips fit in three rows`() {
+        // 界面按 CalcTokens.FunctionColumns 折行。多到第四行就会把显示区挤没，
+        // 而「3 行、不用横向滑动」正是验收项 K07 的一半。
+        listOf(scientificFunctions, symbolicFunctions).forEach { strip ->
+            val rows = (strip.size + CalcTokens.FunctionColumns - 1) / CalcTokens.FunctionColumns
+            assertTrue("${strip.size} keys need $rows rows", rows <= 3)
         }
     }
 }

@@ -48,6 +48,7 @@ fun MathIssue.toMessage(): ErrorMessage = when (this) {
     MathIssue.Atan2Origin -> ErrorMessage(R.string.error_atan2_origin)
     MathIssue.NeedsSquareMatrix -> ErrorMessage(R.string.error_needs_square)
     MathIssue.MatrixShapeMismatch -> ErrorMessage(R.string.error_shape_mismatch)
+    MathIssue.InvalidMatrixCell -> ErrorMessage(R.string.error_invalid_cell)
     MathIssue.ArgumentTooLarge -> ErrorMessage(R.string.error_argument_too_large)
 }
 

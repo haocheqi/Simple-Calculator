@@ -105,7 +105,7 @@ class CalculatorEngine(
 
     fun matrix(operation: MatrixOperation, displayMode: DisplayMode): Outcome =
         when (val result = matrix.evaluate(operation)) {
-            is MatrixResult.Success -> Outcome(result.matrix.toMathBlock(), succeeded = true)
+            is MatrixResult.Success -> Outcome(result.toMathBlock(displayMode), succeeded = true)
             is MatrixResult.Scalar -> Outcome(result.value.toMathBlock(displayMode), succeeded = true, value = result.value)
             is MatrixResult.Text -> Outcome(MathBlock.Text(result.value), succeeded = true)
             is MatrixResult.Error -> Outcome(MathBlock.Error(result.error), succeeded = false)

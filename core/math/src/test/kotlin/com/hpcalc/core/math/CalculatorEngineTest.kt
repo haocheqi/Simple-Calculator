@@ -220,4 +220,46 @@ class CalculatorEngineTest {
         assertFalse(outcome.succeeded)
         assertNull(outcome.value)
     }
+
+    /** 把呈现树压成紧凑文本：分式写成 a/b，负号单独成项。 */
+    private fun MathBlock.describe(): String = when (this) {
+        is MathBlock.Number -> literal
+        is MathBlock.Operator -> text
+        is MathBlock.Fraction -> "${numerator.describe()}/${denominator.describe()}"
+        is MathBlock.Row -> children.joinToString("") { it.describe() }
+        is MathBlock.Matrix -> rows.joinToString("; ") { row -> row.joinToString(", ") { it.describe() } }
+        else -> "<other>"
+    }
+
+    @Test
+    fun `G08 matrix inverse leaves the engine as true fractions`() {
+        // 精确分式挂在 MatrixResult.Success.exact 上，引擎却直接调 Matrix.toMathBlock()，
+        // 分数因此被丢成小数——界面永远看不到 −2, 1; 3/2, −1/2。
+        // 断言必须落在引擎的公开出口上，只测矩阵计算器的中间对象是看不出来的。
+        val matrix = Matrix(
+            listOf(
+                listOf(BigDecimal.ONE, BigDecimal(2)),
+                listOf(BigDecimal(3), BigDecimal(4))
+            )
+        )
+
+        val outcome = engine.matrix(MatrixOperation.Inverse(matrix), DisplayMode.DECIMAL)
+
+        assertTrue(outcome.succeeded)
+        assertEquals("−2, 1; 3/2, −1/2", outcome.block.describe())
+    }
+
+    @Test
+    fun `G09 an identity matrix inverts to whole numbers`() {
+        val matrix = Matrix(
+            listOf(
+                listOf(BigDecimal.ONE, BigDecimal.ZERO),
+                listOf(BigDecimal.ZERO, BigDecimal.ONE)
+            )
+        )
+
+        val outcome = engine.matrix(MatrixOperation.Inverse(matrix), DisplayMode.DECIMAL)
+
+        assertEquals("1, 0; 0, 1", outcome.block.describe())
+    }
 }

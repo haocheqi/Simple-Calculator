@@ -94,6 +94,7 @@
     <string name="error_clamp_range">The lower bound exceeds the upper bound</string>
     <string name="error_atan2_origin">atan2(0, 0) is undefined</string>
     <string name="error_needs_square">This operation needs a square matrix</string>
+    <string name="error_invalid_cell">A matrix cell is not a number</string>
     <string name="error_shape_mismatch">The two matrices have incompatible sizes</string>
     <string name="error_argument_too_large">The argument is too large</string>
     <string name="unsupported_matrix_panel">Use the matrix panel for matrices</string>

@@ -9,6 +9,8 @@ import com.hpcalc.core.model.CalculatorMode
 import com.hpcalc.core.model.DisplayMode
 import androidx.lifecycle.SavedStateHandle
 import com.hpcalc.core.model.MathBlock
+import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.ThemeMode
 import com.hpcalc.core.model.plainText
 import java.math.BigDecimal
@@ -244,6 +246,54 @@ class CalculatorViewModelTest {
             vm.currentState.expression.length
         )
     }
+
+    @Test
+    fun `the matrix inverse reaches the ui as true fractions`() {
+        // 端到端回归：精确分式挂在 MatrixResult.Success.exact 上，引擎曾经绕开它，
+        // 界面因此只看到小数。断言落在 ViewModel 的输出上，才是用户真正看到的东西。
+        val vm = viewModel()
+        vm.onEvent(CalculatorUiEvent.SwitchMode(CalculatorMode.MATRIX))
+        listOf("1", "2", "3", "4").forEachIndexed { index, value ->
+            vm.onEvent(
+                CalculatorUiEvent.SetMatrixCell(
+                    side = MatrixSide.LEFT,
+                    row = index / 2,
+                    column = index % 2,
+                    value = value
+                )
+            )
+        }
+        vm.onEvent(CalculatorUiEvent.SetMatrixOperation(MatrixOperationKind.INVERSE))
+        vm.onEvent(CalculatorUiEvent.EvaluateMatrix)
+
+        assertEquals("−2, 1; 3/2, −1/2", vm.currentState.result.describe())
+    }
+
+    @Test
+    fun `matrix cells reject anything that is not a number`() {
+        val vm = viewModel()
+        vm.onEvent(CalculatorUiEvent.SetMatrixCell(MatrixSide.LEFT, 0, 0, "1 a.5x"))
+        vm.onEvent(CalculatorUiEvent.SetMatrixCell(MatrixSide.LEFT, 0, 1, "abc"))
+
+        assertEquals("1.5", vm.currentState.matrix.left[0][0])
+        assertEquals("", vm.currentState.matrix.left[0][1])
+    }
+
+    @Test
+    fun `an unusable matrix reports an error instead of doing nothing`() {
+        // 单元格被过滤后仍可能留下裸 "-"，解析不了。按「计算」必须有反馈。
+        val vm = viewModel()
+        vm.onEvent(CalculatorUiEvent.SwitchMode(CalculatorMode.MATRIX))
+        vm.onEvent(CalculatorUiEvent.SetMatrixCell(MatrixSide.LEFT, 0, 0, "-"))
+        vm.onEvent(CalculatorUiEvent.SetMatrixOperation(MatrixOperationKind.TRANSPOSE))
+        vm.onEvent(CalculatorUiEvent.EvaluateMatrix)
+
+        val block = vm.currentState.result
+        assertTrue("expected an error, got $block", block is MathBlock.Error)
+        val error = (block as MathBlock.Error).error
+        assertTrue(error is MathError.ParseError)
+        assertEquals(MathIssue.InvalidMatrixCell, (error as MathError.ParseError).issue)
+    }
 }
 
 /** 内存版历史表，行为与 Room 查询保持一致（按置顶、时间排序）。 */
@@ -292,4 +342,14 @@ private class FakeSettingsStore : SettingsStore {
     override suspend fun setDisplayMode(value: DisplayMode) {
         settings.value = settings.value.copy(displayMode = value)
     }
+}
+
+/** 把呈现树压成紧凑文本，便于断言结构。 */
+private fun MathBlock.describe(): String = when (this) {
+    is MathBlock.Number -> literal
+    is MathBlock.Operator -> text
+    is MathBlock.Fraction -> "${numerator.describe()}/${denominator.describe()}"
+    is MathBlock.Row -> children.joinToString("") { it.describe() }
+    is MathBlock.Matrix -> rows.joinToString("; ") { row -> row.joinToString(", ") { it.describe() } }
+    else -> "<other>"
 }

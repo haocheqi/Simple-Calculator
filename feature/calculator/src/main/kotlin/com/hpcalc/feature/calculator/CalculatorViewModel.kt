@@ -17,6 +17,8 @@ import com.hpcalc.core.model.CalculatorMode
 import com.hpcalc.core.model.DisplayMode
 import com.hpcalc.core.model.EvaluationContext
 import com.hpcalc.core.model.MathBlock
+import com.hpcalc.core.model.MathError
+import com.hpcalc.core.model.MathIssue
 import com.hpcalc.core.model.Matrix
 import com.hpcalc.core.model.MatrixOperation
 import com.hpcalc.core.model.plainText
@@ -234,13 +236,30 @@ class CalculatorViewModel(
 
     private fun evaluateMatrix() {
         val matrix = local.value.matrix
-        val left = matrix.left.toMatrix() ?: return
-        val right = matrix.right.toMatrix() ?: return
+        val needsRight = matrix.operation.needsRightOperand
+        val left = matrix.left.toMatrix()
+        val right = if (needsRight) matrix.right.toMatrix() else null
+
+        // 解析失败时必须报错。以前这两行是 `?: return`，按「计算」什么都不会发生，
+        // 用户只会以为按钮坏了。
+        if (left == null || (needsRight && right == null)) {
+            mutate {
+                it.copy(
+                    result = MathBlock.Error(
+                        MathError.ParseError(
+                            "matrix cell is not a number",
+                            MathIssue.InvalidMatrixCell
+                        )
+                    )
+                )
+            }
+            return
+        }
 
         val operation: MatrixOperation = when (matrix.operation) {
-            MatrixOperationKind.ADD -> MatrixOperation.Add(left, right)
-            MatrixOperationKind.SUBTRACT -> MatrixOperation.Subtract(left, right)
-            MatrixOperationKind.MULTIPLY -> MatrixOperation.Multiply(left, right)
+            MatrixOperationKind.ADD -> MatrixOperation.Add(left, requireNotNull(right))
+            MatrixOperationKind.SUBTRACT -> MatrixOperation.Subtract(left, requireNotNull(right))
+            MatrixOperationKind.MULTIPLY -> MatrixOperation.Multiply(left, requireNotNull(right))
             MatrixOperationKind.DETERMINANT -> MatrixOperation.Determinant(left)
             MatrixOperationKind.INVERSE -> MatrixOperation.Inverse(left)
             MatrixOperationKind.TRANSPOSE -> MatrixOperation.Transpose(left)

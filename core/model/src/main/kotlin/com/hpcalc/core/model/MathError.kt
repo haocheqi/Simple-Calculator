@@ -33,6 +33,7 @@ sealed interface MathIssue {
     data object Atan2Origin : MathIssue
     data object NeedsSquareMatrix : MathIssue
     data object MatrixShapeMismatch : MathIssue
+    data object InvalidMatrixCell : MathIssue
     data object ArgumentTooLarge : MathIssue
 }
 

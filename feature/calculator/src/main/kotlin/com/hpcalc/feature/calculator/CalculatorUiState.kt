@@ -8,6 +8,15 @@ import com.hpcalc.core.model.plainText
 import java.math.BigDecimal
 
 /** 矩阵面板支持的运算。 */
+/**
+ * 单元格输入过滤：只保留十进制数字符。
+ *
+ * 不做这一步时，界面允许填 `abc`，按计算后 `toBigDecimalOrNull()` 失败、`toMatrix()` 返回 null，
+ * 于是**什么都不会发生**——用户只会觉得按钮坏了。
+ */
+internal fun sanitizeCellInput(raw: String): String =
+    raw.filter { it.isDigit() || it == '.' || it == '-' || it == '+' || it == 'e' || it == 'E' }
+        .take(MatrixUiState.MAX_CELL_LENGTH)
 enum class MatrixOperationKind {
     ADD,
     SUBTRACT,
@@ -57,6 +66,11 @@ data class MatrixUiState(
 
     val rightColumnCount: Int get() = rightColumnsFor(operation, columns, rightColumns)
 
+    companion object {
+        /** 单个单元格的字符上限。够写 `1.234567890123e-10`，又不至于把输入框塞爆。 */
+        const val MAX_CELL_LENGTH = 24
+    }
+
     fun withRows(value: Int): MatrixUiState =
         copy(rows = value.coerceIn(CalculatorViewModel.MIN_MATRIX_SIZE, CalculatorViewModel.MAX_MATRIX_SIZE))
             .reshaped()
@@ -71,7 +85,9 @@ data class MatrixUiState(
 
     fun withOperation(kind: MatrixOperationKind): MatrixUiState = copy(operation = kind).reshaped()
 
-    fun withCell(side: MatrixSide, row: Int, column: Int, value: String): MatrixUiState {
+    fun withCell(side: MatrixSide, row: Int, column: Int, raw: String): MatrixUiState {
+        // 单元格只收十进制数字符：字母和空格直接丢掉，免得用户填出「算不了」的矩阵。
+        val value = sanitizeCellInput(raw)
         fun set(grid: List<List<String>>): List<List<String>> = grid.mapIndexed { r, cells ->
             if (r != row) cells else cells.mapIndexed { c, cell -> if (c == column) value else cell }
         }
